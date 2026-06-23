@@ -6,6 +6,8 @@ using UnityEngine.InputSystem;
 namespace RightOfBlood.Prototype {
     public sealed class IntroQuestGame : MonoBehaviour {
         public const float DefaultInteractionRange = 1.2f;
+        private const int RequiredOfficialInfluenceForCouncilLawPath = 2;
+        private const int RequiredMafiaReputationForCouncilCriminalPath = -1;
 
         [Header("Manual Scene Setup")] [SerializeField]
         private LocationId initialLocation = LocationId.office;
@@ -24,6 +26,7 @@ namespace RightOfBlood.Prototype {
         private PrototypeInteractable nearestInteractable;
         private bool dialogueOpen;
         private string currentPrompt;
+        private LocationId currentLocation;
 
         private void Awake() {
             state = new IntroQuestState();
@@ -43,6 +46,7 @@ namespace RightOfBlood.Prototype {
 
             if (player != null) {
                 player.CanMove = !dialogueOpen;
+                RefreshWorldState();
                 UpdateInteractionPrompt();
             }
 
@@ -69,6 +73,9 @@ namespace RightOfBlood.Prototype {
             interactables.Clear();
             interactables.AddRange(
                 FindObjectsByType<PrototypeInteractable>(FindObjectsInactive.Include, FindObjectsSortMode.None));
+            foreach (var interactable in interactables) {
+                if (interactable != null) interactable.CaptureScenePlacement();
+            }
             player = FindFirstObjectByType<PrototypePlayerController>();
         }
 
@@ -88,6 +95,8 @@ namespace RightOfBlood.Prototype {
                 return;
             }
 
+            currentLocation = locationId;
+
             if (player != null) {
                 var spawn = targetLocation.GetSpawn(spawnId);
                 if (spawn != null) player.transform.position = spawn.position;
@@ -95,23 +104,176 @@ namespace RightOfBlood.Prototype {
                 player.UseBounds = targetLocation.UseMovementBounds;
             }
 
+            RefreshWorldState();
             nearestInteractable = null;
             currentPrompt = string.Empty;
         }
 
+        private void RefreshWorldState() {
+            if (interactables.Count == 0) return;
+
+            foreach (var interactable in interactables) {
+                if (interactable == null) continue;
+
+                switch (interactable.Kind) {
+                    case PrototypeInteractionKind.council_scholar:
+                        RouteCouncilScholar(interactable);
+                        break;
+                    case PrototypeInteractionKind.mafia_fixer:
+                        RouteMafiaFixer(interactable);
+                        break;
+                    case PrototypeInteractionKind.former_archivist:
+                        RouteFormerArchivist(interactable);
+                        break;
+                    case PrototypeInteractionKind.black_archive_door:
+                        interactable.SetVisible(!state.DocumentFound);
+                        break;
+                }
+            }
+        }
+
+        private void RouteCouncilScholar(PrototypeInteractable interactable) {
+            if (ShouldScholarWaitAtCouncil()) {
+                MoveCharacterHome(interactable, new Vector2(-4.7f, 0.6f));
+                return;
+            }
+
+            if (ShouldScholarWaitInCity()) {
+                MoveCharacterToCity(interactable, new Vector2(-4.7f, 0.6f));
+                return;
+            }
+
+            interactable.SetVisible(false);
+        }
+
+        private void RouteMafiaFixer(PrototypeInteractable interactable) {
+            if (ShouldFixerWaitInDarkStreets()) {
+                MoveCharacterHome(interactable, new Vector2(3.7f, 1.2f));
+                return;
+            }
+
+            if (ShouldFixerWaitInCity()) {
+                MoveCharacterToCity(interactable, new Vector2(3.7f, 1.2f));
+                return;
+            }
+
+            interactable.SetVisible(false);
+        }
+
+        private void RouteFormerArchivist(PrototypeInteractable interactable) {
+            if (ShouldFormerArchivistWaitInCity()) {
+                MoveCharacterToCity(interactable, new Vector2(-7.9f, 1.9f));
+                return;
+            }
+
+            interactable.SetVisible(false);
+        }
+
+        private bool ShouldScholarWaitInCity() {
+            return state.Stage == QuestStage.choose_archive_access && !state.DocumentFound && state.Access != AccessMethod.council;
+        }
+
+        private bool ShouldScholarWaitAtCouncil() {
+            return state.Access == AccessMethod.council || state.CouncilHasCopy || state.CouncilQuestStage != CouncilQuestStage.locked;
+        }
+
+        private bool ShouldFixerWaitInCity() {
+            return state.Stage == QuestStage.choose_archive_access && !state.DocumentFound && state.Access != AccessMethod.mafia;
+        }
+
+        private bool ShouldFixerWaitInDarkStreets() {
+            return state.Access == AccessMethod.mafia || state.MafiaHasCopy || state.CouncilQuestStage == CouncilQuestStage.negotiate_with_mafia || state.CriminalWorldAccess;
+        }
+
+        private bool ShouldFormerArchivistWaitInCity() {
+            return state.CouncilQuestStage == CouncilQuestStage.investigate_intrigue ||
+                   (state.Stage == QuestStage.choose_archive_access && !state.DocumentFound);
+        }
+
+        private void MoveCharacterToCity(PrototypeInteractable interactable, Vector2 fallbackOffset) {
+            var city = GetLocation(LocationId.city);
+            if (interactable.ScenePlacementBelongsTo(city)) {
+                interactable.MoveToScenePlacement();
+                return;
+            }
+
+            interactable.MoveToLocation(city, "default", fallbackOffset);
+        }
+
+        private void MoveCharacterHome(PrototypeInteractable interactable, Vector2 fallbackOffset) {
+            var home = GetLocation(interactable.TargetLocation);
+            if (interactable.ScenePlacementBelongsTo(home)) {
+                interactable.MoveToScenePlacement();
+                return;
+            }
+
+            interactable.MoveToLocation(home, interactable.TargetSpawnId, fallbackOffset);
+        }
+
+        private PrototypeLocation GetLocation(LocationId locationId) {
+            foreach (var location in locations) {
+                if (location != null && location.Id == locationId) return location;
+            }
+
+            return null;
+        }
+
+        private void TryTravel(PrototypeInteractable door) {
+            if (!CanTravelTo(door.TargetLocation, out var blockedReason)) {
+                ShowMessage("Путь закрыт", blockedReason);
+                return;
+            }
+
+            LoadLocation(door.TargetLocation, door.TargetSpawnId);
+        }
+
+        private bool CanTravelTo(LocationId targetLocation, out string blockedReason) {
+            blockedReason = string.Empty;
+
+            if (targetLocation == LocationId.council && !CanEnterCouncilLocation()) {
+                blockedReason = "Здание Совета закрыто для обычного магистрата. Сначала найдите учёного Совета в городе и получите приглашение или доверие Совета.";
+                return false;
+            }
+
+            if (targetLocation == LocationId.streets && !CanEnterDarkStreets()) {
+                blockedReason = "В тёмные переулки без проводника лучше не идти. Сначала найдите посредника мафии в городе или получите криминальный повод для встречи.";
+                return false;
+            }
+
+            return true;
+        }
+
+        private bool CanEnterCouncilLocation() {
+            return state.Access == AccessMethod.council || state.CouncilReputation > 0 || state.CouncilHasCopy ||
+                   state.CouncilQuestStage != CouncilQuestStage.locked || state.SecretLibraryAccess;
+        }
+
+        private bool CanEnterDarkStreets() {
+            return state.Access == AccessMethod.mafia || state.MafiaReputation > 0 || state.MafiaHasCopy ||
+                   state.CouncilQuestStage == CouncilQuestStage.negotiate_with_mafia || state.CriminalWorldAccess;
+        }
+        private static bool IsLegacyDepartmentEntrance(PrototypeInteractable interactable) {
+            return interactable != null && interactable.Kind == PrototypeInteractionKind.archive_investigator &&
+                   interactable.name == "Department";
+        }
         public void Interact(PrototypeInteractable interactable) {
+            if (IsLegacyDepartmentEntrance(interactable)) {
+                LoadLocation(LocationId.office, "default");
+                return;
+            }
+
             switch (interactable.Kind) {
                 case PrototypeInteractionKind.missing_document_desk: InspectDesk(); break;
                 case PrototypeInteractionKind.chief: TalkToChief(); break;
-                case PrototypeInteractionKind.archive_guard: TalkToArchiveGuard(); break;
                 case PrototypeInteractionKind.council_scholar: TalkToCouncilScholar(); break;
                 case PrototypeInteractionKind.mafia_fixer: TalkToMafiaFixer(); break;
                 case PrototypeInteractionKind.former_archivist: TalkToFormerArchivist(); break;
                 case PrototypeInteractionKind.archive_shelf: InspectArchiveShelf(); break;
-                case PrototypeInteractionKind.archive_investigator: TalkToArchiveInvestigator(); break;
+                case PrototypeInteractionKind.archive_security: TalkToArchiveSecurity(); break;
+                case PrototypeInteractionKind.archive_investigator: TalkToArchiveSecurity(); break;
                 case PrototypeInteractionKind.black_archive_door: TrySoloAccess(); break;
                 case PrototypeInteractionKind.door:
-                    LoadLocation(interactable.TargetLocation, interactable.TargetSpawnId); break;
+                    TryTravel(interactable); break;
                 default: throw new ArgumentOutOfRangeException();
             }
         }
@@ -161,9 +323,10 @@ namespace RightOfBlood.Prototype {
                 });
         }
 
-        private void TalkToArchiveGuard() {
-            if (state.Stage == QuestStage.completed) {
-                ShowMessage("Охрана архива", "После ночного происшествия сюда никого не пускают без двойной подписи.");
+        private void TalkToArchiveSecurity() {
+            if (state.ArchiveSecurityAlerted) {
+                ShowMessage("Охрана архива",
+                    "После происшествия архив закрыт: охрана заметила следы проникновения и начала внутреннюю проверку.");
                 return;
             }
 
@@ -188,10 +351,15 @@ namespace RightOfBlood.Prototype {
         }
 
         private void TalkToCouncilScholar() {
+            if (state.Stage == QuestStage.completed && TryUnlockCouncilQuest()) {
+                TalkToCouncilProblem();
+                return;
+            }
+
             if (state.DocumentFound) {
                 ShowMessage("Учёный Совета",
                     state.CouncilHasCopy
-                        ? "Совет уже изучает копию. Ваш род упоминался в старой кровной таблице.."
+                        ? "Совет уже изучает копию. Ваш род упоминался в старой кровной таблице, но доступ к тайной библиотеке придётся заслужить."
                         : "Если документ ещё у вас, Совет готов обсудить его позже.");
                 return;
             }
@@ -214,6 +382,23 @@ namespace RightOfBlood.Prototype {
         }
 
         private void TalkToMafiaFixer() {
+            if (state.CouncilQuestStage == CouncilQuestStage.negotiate_with_mafia) {
+                ShowDialogue("Посредник мафии",
+                    "Совет просит защиты, когда сам задолжал улицам. Выполните для нас одно поручение - и люди у тайного общества станут вежливее.",
+                    new[] {
+                        new DialogueChoice("Выполнить поручение мафии", () => {
+                            state.CouncilSolution = CouncilProblemSolution.criminal;
+                            state.MafiaReputation += 2;
+                            state.CouncilReputation -= 1;
+                            state.CriminalWorldAccess = true;
+                            state.ThreatLevel += 1;
+                            FinishCouncilQuest("Мафия отзывает людей от здания Совета. Совет получает тишину, но понимает, что вы решили проблему чужими руками.");
+                        }),
+                        new DialogueChoice("Отказаться", CloseDialogue)
+                    });
+                return;
+            }
+
             if (state.DocumentFound) {
                 ShowMessage("Посредник мафии",
                     state.MafiaHasCopy
@@ -240,6 +425,21 @@ namespace RightOfBlood.Prototype {
         }
 
         private void TalkToFormerArchivist() {
+            if (state.CouncilQuestStage == CouncilQuestStage.investigate_intrigue) {
+                ShowDialogue("Бывший архивный работник",
+                    "Совет - не жертва, а неудачный должник. Они подкупили людей мафии, получили охранные схемы района, а потом отказались платить.",
+                    new[] {
+                        new DialogueChoice("Забрать сведения для шантажа", () => {
+                            state.CouncilBlackmailLeverage = true;
+                            state.CouncilQuestStage = CouncilQuestStage.return_to_council;
+                            ShowMessage("Компромат найден",
+                                "Теперь можно вернуться к учёному Совета и потребовать доступ к тайной библиотеке без открытой войны фракций.");
+                        }),
+                        new DialogueChoice("Уйти", CloseDialogue)
+                    });
+                return;
+            }
+
             if (state.DocumentFound) {
                 ShowMessage("Бывший работник архива", "После такого следа охрана начнёт считать каждый ключ.");
                 return;
@@ -249,6 +449,7 @@ namespace RightOfBlood.Prototype {
                 "У старого архива есть чёрный ход. Снаружи он выглядит как кладовая. Внутри - прямой коридор к закрытым полкам.",
                 new[] {
                     new DialogueChoice("Запомнить путь", () => {
+                        state.BlackArchiveEntranceKnown = true;
                         state.ThreatLevel += 1;
                         ShowMessage("Зацепка",
                             "Теперь можно попробовать самостоятельный доступ через чёрный ход у здания архива.");
@@ -258,6 +459,11 @@ namespace RightOfBlood.Prototype {
         }
 
         private void TrySoloAccess() {
+            if (!state.BlackArchiveEntranceKnown) {
+                ShowMessage("Вход", "Магистрат не может пройти.");
+                return;
+            }
+
             if (state.DocumentFound) {
                 ShowMessage("Чёрный ход", "Дверь уже опечатана после происшествия.");
                 return;
@@ -295,7 +501,7 @@ namespace RightOfBlood.Prototype {
             state.Stage = QuestStage.completed;
             state.DocumentFound = true;
             state.BloodKnowledgeUnlocked = true;
-            state.ArchiveInvestigationStarted = true;
+            state.ArchiveSecurityAlerted = true;
 
             if (state.Access == AccessMethod.council) {
                 state.CopyCreated = true;
@@ -317,19 +523,111 @@ namespace RightOfBlood.Prototype {
                 state.ThreatLevel += 1;
             }
 
+            TryUnlockCouncilQuest();
             ShowDialogue("Пропавший архивный документ", GetCompletionText(),
                 new[] { new DialogueChoice("Завершить квест", CloseDialogue) });
         }
 
-        private void TalkToArchiveInvestigator() {
-            ShowMessage("Следователь архива",
-                "Охрана заметила проникновение! Расследование началось, вопрос - кто первым получит правду о вашей крови?");
+        private bool TryUnlockCouncilQuest() {
+            if (state.CouncilQuestStage != CouncilQuestStage.locked) return true;
+            if (state.Stage != QuestStage.completed || !state.CouncilHasCopy || !state.BloodKnowledgeUnlocked) return false;
+
+            state.CouncilQuestStage = CouncilQuestStage.choose_solution;
+            return true;
         }
 
+        private void TalkToCouncilProblem() {
+            switch (state.CouncilQuestStage) {
+                case CouncilQuestStage.choose_solution:
+                    ShowCouncilSolutionChoice();
+                    break;
+                case CouncilQuestStage.negotiate_with_mafia:
+                    ShowMessage("Учёный Совета",
+                        "Пока мафия держит район в страхе, вход в тайную библиотеку останется закрытым. Найдите посредника и договоритесь.");
+                    break;
+                case CouncilQuestStage.investigate_intrigue:
+                    ShowMessage("Учёный Совета",
+                        "Если вы выбрали путь интриг, ищите не на кафедрах, а среди тех, кто помнит грязные сделки архива.");
+                    break;
+                case CouncilQuestStage.return_to_council:
+                    ShowDialogue("Учёный Совета",
+                        "Вы нашли причину давления мафии? Совет слушает очень внимательно.",
+                        new[] {
+                            new DialogueChoice("Потребовать доступ за молчание", () => {
+                                state.CouncilSolution = CouncilProblemSolution.intrigue;
+                                FinishCouncilQuest("Компромат заставляет Совет открыть тайную библиотеку. Фракции публично остаются в равновесии, а награда получена шантажом.");
+                            }),
+                            new DialogueChoice("Уйти", CloseDialogue)
+                        });
+                    break;
+                case CouncilQuestStage.completed:
+                    ShowMessage("Тайная библиотека",
+                        "Совет уже открыл вам закрытый зал. Новая ветвь магии крови закреплена в ваших знаниях.");
+                    break;
+                default:
+                    ShowMessage("Учёный Совета", "Совет не готов обсуждать тайную библиотеку без найденной архивной копии.");
+                    break;
+            }
+        }
+
+        private void ShowCouncilSolutionChoice() {
+            ShowDialogue("Проблема Совета",
+                "У здания тайного научного общества орудуют люди мафии. Совет обещает доступ к тайной библиотеке, если вы обеспечите району безопасность.",
+                new[] {
+                    new DialogueChoice("Закон: перенаправить патрули", TryLawCouncilSolution),
+                    new DialogueChoice("Мафия: договориться через улицы", TryCriminalCouncilSolution),
+                    new DialogueChoice("Интрига: выяснить истинную причину", () => {
+                        state.CouncilSolution = CouncilProblemSolution.intrigue;
+                        state.CouncilQuestStage = CouncilQuestStage.investigate_intrigue;
+                        ShowMessage("Путь интриг",
+                            "Вы начинаете копать под сам Совет. Нужен человек, который знает старые сделки архива и районных посредников.");
+                    }),
+                    new DialogueChoice("Решить позже", CloseDialogue)
+                });
+        }
+
+        private void TryLawCouncilSolution() {
+            if (state.OfficialInfluence < RequiredOfficialInfluenceForCouncilLawPath) {
+                ShowMessage("Недостаточно влияния",
+                    "Чтобы снять патрули с других районов и поставить их у здания Совета, нужно больше служебного влияния.");
+                return;
+            }
+
+            state.CouncilSolution = CouncilProblemSolution.law;
+            state.CouncilDistrictSecured = true;
+            state.CouncilReputation += 2;
+            state.MafiaReputation -= 2;
+            state.OfficialInfluence -= 1;
+            state.OtherDistrictSafety -= 1;
+            FinishCouncilQuest("Патрули защищают район Совета от преступников. Совет благодарен, мафия злится, а безопасность других улиц проседает.");
+        }
+
+        private void TryCriminalCouncilSolution() {
+            if (state.MafiaReputation < RequiredMafiaReputationForCouncilCriminalPath) {
+                ShowMessage("Недостаточно контактов",
+                    "Мафия не станет говорить о районе Совета, пока ваша репутация на улицах слишком низка.");
+                return;
+            }
+
+            state.CouncilSolution = CouncilProblemSolution.criminal;
+            state.CouncilQuestStage = CouncilQuestStage.negotiate_with_mafia;
+            ShowMessage("Криминальный путь",
+                "Найдите посредника мафии. Совет получит защиту, но цена этой услуги будет неофициальной.");
+        }
+
+        private void FinishCouncilQuest(string resolutionText) {
+            state.CouncilQuestStage = CouncilQuestStage.completed;
+            state.SecretLibraryAccess = true;
+            state.BloodMagicAdvancedUnlocked = true;
+            state.BloodKnowledgeUnlocked = true;
+
+            ShowDialogue("Тайная библиотека", resolutionText + " Совет допускает вас к закрытым записям, и кровь отвечает новым знанием.",
+                new[] { new DialogueChoice("Завершить квест Совета", CloseDialogue) });
+        }
         private string GetCompletionText() {
             if (state.Access == AccessMethod.council) {
                 return
-                    "Вы находите документ и создаёте копию для Совета. Совет получает доступ к знанию, а мафия начинает угрожать.";
+                    "Вы находите документ и создаёте копию для Совета. Совет получает доступ к знанию, а мафия начинает угрожать. Совет готов открыть путь к тайной библиотеке, если вы решите его районную проблему.";
             }
 
             if (state.Access == AccessMethod.mafia) {
@@ -342,6 +640,10 @@ namespace RightOfBlood.Prototype {
         }
 
         private string GetObjectiveText() {
+            if (state.Stage == QuestStage.completed && state.CouncilQuestStage != CouncilQuestStage.locked) {
+                return GetCouncilObjectiveText();
+            }
+
             switch (state.Stage) {
                 case QuestStage.inspect_missing_document:
                     return "Осмотрите рабочий стол и след пропавшего документа.";
@@ -360,6 +662,23 @@ namespace RightOfBlood.Prototype {
             }
         }
 
+        private string GetCouncilObjectiveText() {
+            switch (state.CouncilQuestStage) {
+                case CouncilQuestStage.choose_solution:
+                    return "Поговорите с учёным и решите, как защитить район от подозрительных людей.";
+                case CouncilQuestStage.negotiate_with_mafia:
+                    return "Договоритесь с посредником мафии, чтобы преступники оставили Совет в покое.";
+                case CouncilQuestStage.investigate_intrigue:
+                    return "Найдите, почему мафия начала давить на тайное общество.";
+                case CouncilQuestStage.return_to_council:
+                    return "Вернитесь к учёному и используйте найденный компромат.";
+                case CouncilQuestStage.completed:
+                    return "Квест  завершён. Тайная библиотека открыта, новая магия крови изучена.";
+                default:
+                    return "Квест недоступен: нужна завершённая архивная зацепка и копия у Совета.";
+            }
+        }
+
         private void UpdateInteractionPrompt() {
             nearestInteractable = null;
             var nearestDistance = float.MaxValue;
@@ -374,7 +693,7 @@ namespace RightOfBlood.Prototype {
                 }
             }
 
-            currentPrompt = nearestInteractable == null ? string.Empty : $"[ E ]";
+            currentPrompt = nearestInteractable == null ? string.Empty : $"[ E ] {nearestInteractable.Label}";
         }
 
         private void ShowMessage(string newSpeaker, string text) {

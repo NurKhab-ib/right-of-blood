@@ -32,17 +32,33 @@ namespace RightOfBlood.Prototype {
         mafia
     }
 
+    public enum CouncilQuestStage {
+        locked,
+        choose_solution,
+        negotiate_with_mafia,
+        investigate_intrigue,
+        return_to_council,
+        completed
+    }
+
+    public enum CouncilProblemSolution {
+        none,
+        law,
+        criminal,
+        intrigue
+    }
+
     public enum PrototypeInteractionKind {
-        missing_document_desk,
-        chief,
-        archive_guard,
-        council_scholar,
-        mafia_fixer,
-        former_archivist,
-        archive_shelf,
-        archive_investigator,
-        black_archive_door,
-        door
+        missing_document_desk = 0,
+        chief = 1,
+        archive_security = 2,
+        council_scholar = 3,
+        mafia_fixer = 4,
+        former_archivist = 5,
+        archive_shelf = 6,
+        archive_investigator = 7,
+        black_archive_door = 8,
+        door = 9
     }
 
     [Serializable]
@@ -64,7 +80,16 @@ namespace RightOfBlood.Prototype {
         public bool MafiaHasCopy;
         public bool PlayerOnlyAccess;
         public bool BloodKnowledgeUnlocked;
-        public bool ArchiveInvestigationStarted;
+        public bool ArchiveSecurityAlerted;
+        public bool BlackArchiveEntranceKnown;
+        public CouncilQuestStage CouncilQuestStage = CouncilQuestStage.locked;
+        public CouncilProblemSolution CouncilSolution = CouncilProblemSolution.none;
+        public int OtherDistrictSafety;
+        public bool CouncilDistrictSecured;
+        public bool CriminalWorldAccess;
+        public bool CouncilBlackmailLeverage;
+        public bool SecretLibraryAccess;
+        public bool BloodMagicAdvancedUnlocked;
     }
 
     public sealed class DialogueChoice {

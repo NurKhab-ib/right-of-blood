@@ -20,7 +20,8 @@ namespace RightOfBlood.Prototype {
             if (promptText != null) promptText.text = prompt;
             if (stateText != null) {
                 stateText.text = $"Совет {state.CouncilReputation:+#;-#;0}   Мафия {state.MafiaReputation:+#;-#;0}   " +
-                                 $"Служебное влияние {state.OfficialInfluence}   Угроза {state.ThreatLevel}   Документ: {DocumentStatus(state)}";
+                                 $"Служебное влияние {state.OfficialInfluence}   Угроза {state.ThreatLevel}   " +
+                                 $"Документ: {DocumentStatus(state)}   Совет: {CouncilQuestStatus(state)}";
             }
         }
 
@@ -41,8 +42,9 @@ namespace RightOfBlood.Prototype {
                     }
                 }
 
-                if (choiceLabels != null && i < choiceLabels.Length && choiceLabels[i] != null) {
-                    choiceLabels[i].text = hasChoice ? $"{i + 1}. {choices[i]}" : string.Empty;
+                var choiceLabel = GetChoiceLabel(i);
+                if (choiceLabel != null) {
+                    choiceLabel.text = hasChoice ? choices[i] : string.Empty;
                 }
             }
         }
@@ -51,12 +53,34 @@ namespace RightOfBlood.Prototype {
             if (dialoguePanel != null) dialoguePanel.SetActive(false);
         }
 
+        private TMP_Text GetChoiceLabel(int index) {
+            if (choiceLabels != null && index < choiceLabels.Length && choiceLabels[index] != null) {
+                return choiceLabels[index];
+            }
+
+            if (choiceButtons != null && index < choiceButtons.Length && choiceButtons[index] != null) {
+                return choiceButtons[index].GetComponentInChildren<TMP_Text>(true);
+            }
+
+            return null;
+        }
+
         private static string DocumentStatus(IntroQuestState state) {
             if (!state.DocumentFound) return "не найден";
             if (state.Owner == DocumentOwner.council) return "копия у Совета";
             if (state.Owner == DocumentOwner.mafia) return "копия у мафии";
             return "только у игрока";
         }
+
+        private static string CouncilQuestStatus(IntroQuestState state) {
+            if (state.CouncilQuestStage == CouncilQuestStage.locked) return "закрыт";
+            if (state.CouncilQuestStage != CouncilQuestStage.completed) return "активен";
+
+            var solution = state.CouncilSolution == CouncilProblemSolution.law ? "закон" :
+                state.CouncilSolution == CouncilProblemSolution.criminal ? "мафия" :
+                state.CouncilSolution == CouncilProblemSolution.intrigue ? "интрига" : "решён";
+
+            return state.BloodMagicAdvancedUnlocked ? $"библиотека, {solution}" : solution;
+        }
     }
 }
-
