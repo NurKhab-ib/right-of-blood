@@ -164,7 +164,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ad6f7a5afcafe214bab65b74e0f27fbd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RightOfBlood.Prototype.PrototypeInteractable
-  label: Interact
+  label: "\u0411\u044B\u0432\u0448\u0438\u0439 \u0440\u0430\u0431\u043E\u0442\u043D\u0438\u043A
+    \u0430\u0440\u0445\u0438\u0432\u0430"
   kind: 5
   targetLocation: 1
   targetSpawnId: default
@@ -263,8 +264,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 370, y: -148}
-  m_SizeDelta: {x: 193.8201, y: 61.5655}
+  m_AnchoredPosition: {x: 376.05853, y: -153.33235}
+  m_SizeDelta: {x: 219.9372, y: 72.2302}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &7316888
 MonoBehaviour:
@@ -473,8 +474,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 236, y: -931}
-  m_SizeDelta: {x: 200, y: 50}
+  m_AnchoredPosition: {x: 418, y: -957}
+  m_SizeDelta: {x: 658.4893, y: 108.0868}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &48576407
 MonoBehaviour:
@@ -523,14 +524,14 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 64
-  m_fontSizeBase: 64
+  m_fontSize: 56
+  m_fontSizeBase: 56
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
   m_fontSizeMax: 72
   m_fontStyle: 1
-  m_HorizontalAlignment: 2
+  m_HorizontalAlignment: 1
   m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 0
@@ -562,7 +563,7 @@ MonoBehaviour:
   m_VertexBufferAutoSizeReduction: 0
   m_useMaxVisibleDescender: 1
   m_pageToDisplay: 1
-  m_margin: {x: -55.26703, y: 0, z: 99.66489, w: -45.26958}
+  m_margin: {x: 2.8197021, y: 0, z: -0.5214763, w: -0.3842486}
   m_isUsingLegacyAnimationComponent: 0
   m_isVolumetricText: 0
   m_hasFontAssetChanged: 0
@@ -745,7 +746,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ad6f7a5afcafe214bab65b74e0f27fbd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RightOfBlood.Prototype.PrototypeInteractable
-  label: Interact
+  label: "\u0412\u044B\u0445\u043E\u0434"
   kind: 9
   targetLocation: 1
   targetSpawnId: streets
@@ -892,13 +893,13 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 24
-  m_fontSizeBase: 24
+  m_fontSize: 20
+  m_fontSizeBase: 20
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
   m_fontSizeMax: 72
-  m_fontStyle: 0
+  m_fontStyle: 1
   m_HorizontalAlignment: 2
   m_VerticalAlignment: 512
   m_textAlignment: 65535
@@ -962,7 +963,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &381543986
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1009,7 +1010,6 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 751161735}
-  - {fileID: 1508623854}
   - {fileID: 353093573}
   - {fileID: 2079834538}
   - {fileID: 2034003699}
@@ -1153,7 +1153,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ad6f7a5afcafe214bab65b74e0f27fbd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RightOfBlood.Prototype.PrototypeInteractable
-  label: Interact
+  label: "\u041D\u0430\u0447\u0430\u043B\u044C\u043D\u0438\u043A"
   kind: 1
   targetLocation: 0
   targetSpawnId: default
@@ -1451,7 +1451,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &520560339
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1504,6 +1504,8 @@ Transform:
   - {fileID: 655903597}
   - {fileID: 5125178}
   - {fileID: 1106768036}
+  - {fileID: 1514951816}
+  - {fileID: 1508623854}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &534063138
@@ -1779,7 +1781,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ad6f7a5afcafe214bab65b74e0f27fbd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RightOfBlood.Prototype.PrototypeInteractable
-  label: Interact
+  label: "\u041E\u0445\u0440\u0430\u043D\u0430"
   kind: 2
   targetLocation: 2
   targetSpawnId: default
@@ -1962,8 +1964,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 120, y: -148}
-  m_SizeDelta: {x: 193.8201, y: 61.5655}
+  m_AnchoredPosition: {x: 133, y: -153.33235}
+  m_SizeDelta: {x: 234.8617, y: 72.2302}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &632827393
 MonoBehaviour:
@@ -2059,7 +2061,7 @@ GameObject:
   - component: {fileID: 655903599}
   - component: {fileID: 655903598}
   m_Layer: 0
-  m_Name: Department
+  m_Name: Office
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2092,9 +2094,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ad6f7a5afcafe214bab65b74e0f27fbd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RightOfBlood.Prototype.PrototypeInteractable
-  label: Interact
-  kind: 7
-  targetLocation: 1
+  label: "\u041E\u0442\u0434\u0435\u043B \u043C\u0430\u0433\u0438\u0441\u0442\u0440\u0430\u0442\u0430"
+  kind: 9
+  targetLocation: 0
   targetSpawnId: default
 --- !u!212 &655903599
 SpriteRenderer:
@@ -2291,7 +2293,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ad6f7a5afcafe214bab65b74e0f27fbd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RightOfBlood.Prototype.PrototypeInteractable
-  label: Interact
+  label: "\u0420\u0430\u0431\u043E\u0447\u0438\u0439 \u0441\u0442\u043E\u043B"
   kind: 0
   targetLocation: 0
   targetSpawnId: default
@@ -2489,7 +2491,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ad6f7a5afcafe214bab65b74e0f27fbd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RightOfBlood.Prototype.PrototypeInteractable
-  label: Interact
+  label: "\u0417\u0434\u0430\u043D\u0438\u0435 \u0430\u0440\u0445\u0438\u0432\u0430"
   kind: 9
   targetLocation: 2
   targetSpawnId: default
@@ -2564,7 +2566,7 @@ GameObject:
   - component: {fileID: 944793114}
   - component: {fileID: 944793113}
   m_Layer: 0
-  m_Name: Shelves_Lost_Department
+  m_Name: Shelves_Doc
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2597,7 +2599,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ad6f7a5afcafe214bab65b74e0f27fbd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RightOfBlood.Prototype.PrototypeInteractable
-  label: Interact
+  label: "\u0421\u0435\u043A\u0446\u0438\u044F \u0443\u0442\u0435\u0440\u044F\u043D\u043D\u043E\u0433\u043E
+    \u0434\u043E\u043A\u0443\u043C\u0435\u043D\u0442\u0430"
   kind: 6
   targetLocation: 2
   targetSpawnId: default
@@ -2705,7 +2708,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ad6f7a5afcafe214bab65b74e0f27fbd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RightOfBlood.Prototype.PrototypeInteractable
-  label: Interact
+  label: "\u0422\u0451\u043C\u043D\u044B\u0439 \u043F\u0435\u0440\u0435\u0443\u043B\u043E\u043A"
   kind: 9
   targetLocation: 4
   targetSpawnId: default
@@ -2804,8 +2807,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -135, y: -148}
-  m_SizeDelta: {x: 193.8201, y: 61.5655}
+  m_AnchoredPosition: {x: -115.96, y: -153.33235}
+  m_SizeDelta: {x: 231.91, y: 72.2302}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1002568680
 MonoBehaviour:
@@ -3064,13 +3067,13 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 24
-  m_fontSizeBase: 24
+  m_fontSize: 20
+  m_fontSizeBase: 20
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
   m_fontSizeMax: 72
-  m_fontStyle: 0
+  m_fontStyle: 1
   m_HorizontalAlignment: 2
   m_VerticalAlignment: 512
   m_textAlignment: 65535
@@ -3154,7 +3157,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 1.4495239, y: 430.4897}
+  m_AnchoredPosition: {x: 1.4494629, y: 430.4897}
   m_SizeDelta: {x: -37.6863, y: -901.5645}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1050686150
@@ -3240,7 +3243,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ad6f7a5afcafe214bab65b74e0f27fbd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RightOfBlood.Prototype.PrototypeInteractable
-  label: Interact
+  label: "\u0427\u0451\u0440\u043D\u044B\u0439 \u0445\u043E\u0434 \u0430\u0440\u0445\u0438\u0432\u0430"
   kind: 8
   targetLocation: 2
   targetSpawnId: default
@@ -3320,7 +3323,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &1136294877
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3367,7 +3370,6 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 109379725}
-  - {fileID: 1514951816}
   - {fileID: 1253614232}
   - {fileID: 1299956345}
   m_Father: {fileID: 0}
@@ -3456,13 +3458,13 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 24
-  m_fontSizeBase: 24
+  m_fontSize: 20
+  m_fontSizeBase: 20
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
   m_fontSizeMax: 72
-  m_fontStyle: 0
+  m_fontStyle: 1
   m_HorizontalAlignment: 2
   m_VerticalAlignment: 512
   m_textAlignment: 65535
@@ -3554,7 +3556,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ad6f7a5afcafe214bab65b74e0f27fbd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RightOfBlood.Prototype.PrototypeInteractable
-  label: Interact
+  label: "\u0417\u0434\u0430\u043D\u0438\u0435 \u0421\u043E\u0432\u0435\u0442\u0430"
   kind: 9
   targetLocation: 3
   targetSpawnId: default
@@ -3662,7 +3664,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ad6f7a5afcafe214bab65b74e0f27fbd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RightOfBlood.Prototype.PrototypeInteractable
-  label: Interact
+  label: "\u0414\u0432\u0435\u0440\u044C"
   kind: 9
   targetLocation: 1
   targetSpawnId: office
@@ -3848,7 +3850,7 @@ MonoBehaviour:
   m_VertexBufferAutoSizeReduction: 0
   m_useMaxVisibleDescender: 1
   m_pageToDisplay: 1
-  m_margin: {x: 0, y: 0, z: -825.6629, w: -54.15391}
+  m_margin: {x: 0, y: 0, z: -825.6629, w: -109.610344}
   m_isUsingLegacyAnimationComponent: 0
   m_isVolumetricText: 0
   m_hasFontAssetChanged: 0
@@ -3998,7 +4000,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ad6f7a5afcafe214bab65b74e0f27fbd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RightOfBlood.Prototype.PrototypeInteractable
-  label: Interact
+  label: "\u0414\u0432\u0435\u0440\u044C"
   kind: 9
   targetLocation: 1
   targetSpawnId: council
@@ -4145,13 +4147,13 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 24
-  m_fontSizeBase: 24
+  m_fontSize: 20
+  m_fontSizeBase: 20
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
   m_fontSizeMax: 72
-  m_fontStyle: 0
+  m_fontStyle: 1
   m_HorizontalAlignment: 2
   m_VerticalAlignment: 512
   m_textAlignment: 65535
@@ -4243,7 +4245,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ad6f7a5afcafe214bab65b74e0f27fbd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RightOfBlood.Prototype.PrototypeInteractable
-  label: Interact
+  label: "\u0414\u0432\u0435\u0440\u044C"
   kind: 9
   targetLocation: 1
   targetSpawnId: archive
@@ -4513,11 +4515,11 @@ Transform:
   m_GameObject: {fileID: 1508623853}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 3.74, y: 1.17, z: 0}
+  m_LocalPosition: {x: -0, y: 3.93, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 381543988}
+  m_Father: {fileID: 520560341}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1508623855
 MonoBehaviour:
@@ -4531,7 +4533,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ad6f7a5afcafe214bab65b74e0f27fbd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RightOfBlood.Prototype.PrototypeInteractable
-  label: Interact
+  label: "\u041F\u043E\u0441\u0440\u0435\u0434\u043D\u0438\u043A \u043C\u0430\u0444\u0438\u0438"
   kind: 4
   targetLocation: 4
   targetSpawnId: default
@@ -4585,7 +4587,7 @@ SpriteRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_Sprite: {fileID: -2413806693520163455, guid: a86470a33a6bf42c4b3595704624658b, type: 3}
-  m_Color: {r: 1, g: 0, b: 0.6250315, a: 1}
+  m_Color: {r: 0.645283, g: 0, b: 0.4070062, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -4620,12 +4622,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1514951815}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -4.71, y: 0.62, z: 0}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 2.69, y: -0.31, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 1136294879}
+  m_Father: {fileID: 520560341}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1514951817
 MonoBehaviour:
@@ -4639,7 +4641,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ad6f7a5afcafe214bab65b74e0f27fbd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RightOfBlood.Prototype.PrototypeInteractable
-  label: Interact
+  label: "\u0423\u0447\u0451\u043D\u044B\u0439"
   kind: 3
   targetLocation: 3
   targetSpawnId: default
@@ -4832,7 +4834,7 @@ MonoBehaviour:
   choiceLabels:
   - {fileID: 366928198}
   - {fileID: 1182774700}
-  - {fileID: 1348888668}
+  - {fileID: 1045568632}
   - {fileID: 1348888668}
 --- !u!1 &1738076907
 GameObject:
@@ -5097,8 +5099,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -390, y: -148}
-  m_SizeDelta: {x: 193.8201, y: 61.5655}
+  m_AnchoredPosition: {x: -366.68094, y: -153.33249}
+  m_SizeDelta: {x: 240.4582, y: 72.2296}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1911419351
 MonoBehaviour:
@@ -5199,7 +5201,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &1952683550
 MonoBehaviour:
   m_ObjectHideFlags: 0

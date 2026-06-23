@@ -326,7 +326,7 @@ namespace RightOfBlood.Prototype {
         private void TalkToArchiveSecurity() {
             if (state.ArchiveSecurityAlerted) {
                 ShowMessage("Охрана архива",
-                    "После происшествия архив закрыт: охрана заметила следы проникновения и начала внутреннюю проверку.");
+                    "Охрана заметила следы проникновения и начала внутреннюю проверку.");
                 return;
             }
 
@@ -337,14 +337,14 @@ namespace RightOfBlood.Prototype {
             }
 
             ShowDialogue("Охрана архива",
-                "Рабочий архив закрыт. Нужен допуск, распоряжение Совета или человек, который умеет открывать двери без вопросов.",
+                "Рабочий архив закрыт - требуется доступ.",
                 new[] {
                     new DialogueChoice("Подать служебный запрос", () => {
                         state.Access = AccessMethod.official_blocked;
                         state.OfficialAttemptBlocked = true;
                         state.OfficialInfluence -= 1;
                         ShowMessage("Служебный путь заблокирован",
-                            "Начальник отдела отклоняет запрос по собственным мотивам. Документ не найден, служебный путь закрыт.");
+                            "Начальник отдела отклоняет запрос по собственным мотивам. Документ не найден.");
                     }),
                     new DialogueChoice("Отойти", CloseDialogue)
                 });
@@ -359,7 +359,7 @@ namespace RightOfBlood.Prototype {
             if (state.DocumentFound) {
                 ShowMessage("Учёный Совета",
                     state.CouncilHasCopy
-                        ? "Совет уже изучает копию. Ваш род упоминался в старой кровной таблице, но доступ к тайной библиотеке придётся заслужить."
+                        ? "Совет уже изучает копию. Ваш род упоминался в старой кровной таблице, но доступ к ней придётся заслужить."
                         : "Если документ ещё у вас, Совет готов обсудить его позже.");
                 return;
             }
@@ -384,7 +384,7 @@ namespace RightOfBlood.Prototype {
         private void TalkToMafiaFixer() {
             if (state.CouncilQuestStage == CouncilQuestStage.negotiate_with_mafia) {
                 ShowDialogue("Посредник мафии",
-                    "Совет просит защиты, когда сам задолжал улицам. Выполните для нас одно поручение - и люди у тайного общества станут вежливее.",
+                    "Совет просит защиты, когда сам задолжал улицам. Выполните для нас одно поручение - и наши люди станут вежливее.",
                     new[] {
                         new DialogueChoice("Выполнить поручение мафии", () => {
                             state.CouncilSolution = CouncilProblemSolution.criminal;
@@ -572,15 +572,15 @@ namespace RightOfBlood.Prototype {
 
         private void ShowCouncilSolutionChoice() {
             ShowDialogue("Проблема Совета",
-                "У здания тайного научного общества орудуют люди мафии. Совет обещает доступ к тайной библиотеке, если вы обеспечите району безопасность.",
+                "У здания Совета орудуют люди мафии. Совет обещает доступ к тайной библиотеке, если вы обеспечите району безопасность.",
                 new[] {
-                    new DialogueChoice("Закон: перенаправить патрули", TryLawCouncilSolution),
-                    new DialogueChoice("Мафия: договориться через улицы", TryCriminalCouncilSolution),
-                    new DialogueChoice("Интрига: выяснить истинную причину", () => {
+                    new DialogueChoice("Перенаправить патрули стражи", TryLawCouncilSolution),
+                    new DialogueChoice("Договориться с мафией", TryCriminalCouncilSolution),
+                    new DialogueChoice("Выяснить истинную причину", () => {
                         state.CouncilSolution = CouncilProblemSolution.intrigue;
                         state.CouncilQuestStage = CouncilQuestStage.investigate_intrigue;
                         ShowMessage("Путь интриг",
-                            "Вы начинаете копать под сам Совет. Нужен человек, который знает старые сделки архива и районных посредников.");
+                            "Вы начинаете выяснять причину травли со стороны мафии. Кажется, нужен человек, который знает о тёмных сделках Совета.");
                     }),
                     new DialogueChoice("Решить позже", CloseDialogue)
                 });
