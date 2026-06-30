@@ -1,10 +1,10 @@
-﻿using System;
+using System;
 using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
 
 namespace RightOfBlood.Prototype {
-    public sealed class PrototypeQuestUi : MonoBehaviour {
+    public sealed class QuestUI : MonoBehaviour {
         [Header("HUD")] [SerializeField] private TMP_Text objectiveText;
         [SerializeField] private TMP_Text stateText;
         [SerializeField] private TMP_Text promptText;
@@ -19,9 +19,10 @@ namespace RightOfBlood.Prototype {
             if (objectiveText != null) objectiveText.text = objective;
             if (promptText != null) promptText.text = prompt;
             if (stateText != null) {
-                stateText.text = $"Совет {state.CouncilReputation:+#;-#;0}   Мафия {state.MafiaReputation:+#;-#;0}   " +
-                                 $"Служебное влияние {state.OfficialInfluence}   Угроза {state.ThreatLevel}   " +
-                                 $"Документ: {DocumentStatus(state)}   Совет: {CouncilQuestStatus(state)}";
+                stateText.text = $"Этап {state.Level}   Билд: {BuildStatus(state)}   Реп {CurrentBranchReputation(state)}/{NextReputation(state)}   " +
+                                 $"Совет {state.CouncilReputation:+#;-#;0}   Мафия {state.MafiaReputation:+#;-#;0}   " +
+                                 $"Служба {state.OfficialInfluence}   Угроза {state.ThreatLevel}   " +
+                                 $"Документ {DocumentStatus(state)}   Квест Совета: {CouncilQuestStatus(state)}   Навыки: {SkillStatus(state)}";
             }
         }
 
@@ -64,7 +65,41 @@ namespace RightOfBlood.Prototype {
 
             return null;
         }
+        private static string NextReputation(IntroQuestState state) {
+            return state.Level >= 3 ? "max" : ProgressionModel.GetRequiredReputation(state.Level + 1).ToString();
+        }
 
+        private static int CurrentBranchReputation(IntroQuestState state) {
+            switch (state.Build) {
+                case PlayerBuild.magistrate: return state.OfficialInfluence;
+                case PlayerBuild.sage: return state.CouncilReputation;
+                case PlayerBuild.rogue: return state.MafiaReputation;
+                default: return 0;
+            }
+        }
+
+        private static string BuildStatus(IntroQuestState state) {
+            switch (state.Build) {
+                case PlayerBuild.magistrate: return "Магистрат";
+                case PlayerBuild.sage: return "Мудрец";
+                case PlayerBuild.rogue: return "Разбойник";
+                default: return "не выбран";
+            }
+        }
+
+        private static string SkillStatus(IntroQuestState state) {
+            var skills = new System.Collections.Generic.List<string>();
+            if (state.ServiceSealUnlocked) skills.Add("Печать");
+            if (state.ArchiveProcedureUnlocked) skills.Add("Регламент");
+            if (state.BloodEchoUnlocked) skills.Add("Эхо крови");
+            if (state.CouncilCipherUnlocked) skills.Add("Шифр");
+            if (state.ShadowEntryUnlocked) skills.Add("Тень");
+            if (state.StreetDebtUnlocked) skills.Add("Долг");
+            if (state.AncientBloodMandateUnlocked) skills.Add("Право крови");
+            if (state.PublicLibraryAccessUnlocked) skills.Add("Библиотека");
+            if (state.ArchiveDocumentTheftUnlocked) skills.Add("Кража дела");
+            return skills.Count == 0 ? "нет" : string.Join(", ", skills);
+        }
         private static string DocumentStatus(IntroQuestState state) {
             if (!state.DocumentFound) return "не найден";
             if (state.Owner == DocumentOwner.council) return "копия у Совета";

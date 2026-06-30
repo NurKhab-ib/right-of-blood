@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 namespace RightOfBlood.Prototype {
     public enum LocationId {
@@ -48,6 +48,38 @@ namespace RightOfBlood.Prototype {
         intrigue
     }
 
+    public enum PlayerBuild {
+        undecided,
+        magistrate,
+        sage,
+        rogue
+    }
+
+    public enum ProgressionChoice {
+        none,
+        public_office,
+        forbidden_knowledge,
+        street_authority
+    }
+
+    public enum SkillId {
+        service_seal,
+        archive_procedure,
+        blood_echo,
+        council_cipher,
+        shadow_entry,
+        street_debt,
+        ancient_blood_mandate,
+        public_library_access,
+        archive_document_theft
+    }
+
+
+    public enum PrototypeQuestStatus {
+        locked,
+        active,
+        completed
+    }
     public enum PrototypeInteractionKind {
         missing_document_desk = 0,
         chief = 1,
@@ -68,11 +100,11 @@ namespace RightOfBlood.Prototype {
         public DocumentOwner Owner = DocumentOwner.none;
         public int CouncilReputation;
         public int MafiaReputation;
-        public int OfficialInfluence = 1;
+        public int OfficialInfluence;
         public int ThreatLevel;
         public bool IntroQuestStarted;
         public bool IgnoredFirstHook;
-        public bool OfficialAttemptBlocked;
+        public bool OfficialAttemptBlocked = true;
         public bool CanEnterRestrictedArchive;
         public bool DocumentFound;
         public bool CopyCreated;
@@ -90,6 +122,30 @@ namespace RightOfBlood.Prototype {
         public bool CouncilBlackmailLeverage;
         public bool SecretLibraryAccess;
         public bool BloodMagicAdvancedUnlocked;
+        public PlayerBuild Build = PlayerBuild.undecided;
+        public ProgressionChoice SecondDevelopmentChoice = ProgressionChoice.none;
+        public int Level = 1;
+        public bool ServiceSealUnlocked;
+        public bool ArchiveProcedureUnlocked;
+        public bool BloodEchoUnlocked;
+        public bool CouncilCipherUnlocked;
+        public bool ShadowEntryUnlocked;
+        public bool StreetDebtUnlocked;
+        public bool AncientBloodMandateUnlocked;
+        public bool PublicLibraryAccessUnlocked;
+        public bool ArchiveDocumentTheftUnlocked;
+        public bool ProgressionIntroSeen;
+        public bool FirstBuildChoiceMade;
+        public bool SecondDevelopmentChoiceMade;
+        public bool ArchiveWingScalingTestCompleted;
+        public bool CouncilGateProgressionTestCompleted;
+        public PrototypeQuestStatus ScalingCheckQuestStatus = PrototypeQuestStatus.locked;
+        public PrototypeQuestStatus ProgressionBehaviorQuestStatus = PrototypeQuestStatus.locked;
+        public PrototypeQuestStatus BuildApproachQuestStatus = PrototypeQuestStatus.locked;
+        public string ScalingCheckOutcome;
+        public string ProgressionBehaviorOutcome;
+        public string BuildApproachOutcome;
+        public float LastArchiveDocumentTheftTime = -999f;
     }
 
     public sealed class DialogueChoice {

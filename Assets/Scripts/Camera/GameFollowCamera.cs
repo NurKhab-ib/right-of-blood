@@ -1,9 +1,9 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 namespace RightOfBlood.Prototype {
     [RequireComponent(typeof(Camera))]
-    public sealed class PrototypeCameraFollow : MonoBehaviour {
-        [SerializeField] private PrototypePlayerController target;
+    public sealed class GameFollowCamera : MonoBehaviour {
+        [SerializeField] private PlayerController target;
         [SerializeField] private float orthographicSize = 3.2f;
         [SerializeField] private float smoothTime = 0.18f;
         [SerializeField] private Vector2 offset;
@@ -19,7 +19,7 @@ namespace RightOfBlood.Prototype {
         }
 
         private void LateUpdate() {
-            if (target == null) target = FindFirstObjectByType<PrototypePlayerController>();
+            if (target == null) target = FindFirstObjectByType<PlayerController>();
             if (target == null) return;
 
             cameraComponent.orthographicSize = orthographicSize;
@@ -27,7 +27,7 @@ namespace RightOfBlood.Prototype {
             var desiredPosition = target.transform.position + (Vector3)offset;
             desiredPosition.z = transform.position.z;
 
-            if (clampToPlayerBounds && target.UseBounds) {
+            if (clampToPlayerBounds && target.UseBounds && target.MovementBounds.size.sqrMagnitude > 0.01f) {
                 desiredPosition = ClampToBounds(desiredPosition, target.MovementBounds);
             }
 

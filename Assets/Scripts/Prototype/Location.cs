@@ -1,13 +1,13 @@
 ﻿using UnityEngine;
 
 namespace RightOfBlood.Prototype {
-    public sealed class PrototypeLocation : MonoBehaviour {
+    public sealed class Location : MonoBehaviour {
         [SerializeField] private LocationId id;
         [SerializeField] private bool hideWhenInactive = true;
         [SerializeField] private bool useMovementBounds = true;
         [SerializeField] private Vector2 movementBoundsCenter;
         [SerializeField] private Vector2 movementBoundsSize = new Vector2(12f, 8f);
-        [SerializeField] private PrototypeSpawnPoint[] spawnPoints;
+        [SerializeField] private SpawnPoint[] spawnPoints;
 
         public LocationId Id => id;
         public bool HideWhenInactive => hideWhenInactive;

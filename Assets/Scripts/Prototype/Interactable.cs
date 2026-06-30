@@ -1,7 +1,7 @@
 ﻿using UnityEngine;
 
 namespace RightOfBlood.Prototype {
-    public sealed class PrototypeInteractable : MonoBehaviour {
+    public sealed class Interactable : MonoBehaviour {
         [SerializeField] private string label = "Interact";
         [SerializeField] private PrototypeInteractionKind kind;
         [SerializeField] private LocationId targetLocation;
@@ -28,7 +28,7 @@ namespace RightOfBlood.Prototype {
             sceneLocalScale = transform.localScale;
         }
 
-        public bool ScenePlacementBelongsTo(PrototypeLocation location) {
+        public bool ScenePlacementBelongsTo(Location location) {
             if (!scenePlacementCaptured || location == null) return false;
 
             var parent = sceneParent;
@@ -50,7 +50,7 @@ namespace RightOfBlood.Prototype {
             gameObject.SetActive(true);
         }
 
-        public void MoveToLocation(PrototypeLocation location, string spawnId, Vector2 localOffset) {
+        public void MoveToLocation(Location location, string spawnId, Vector2 localOffset) {
             if (!scenePlacementCaptured) CaptureScenePlacement();
             if (location == null) {
                 gameObject.SetActive(false);
@@ -71,7 +71,7 @@ namespace RightOfBlood.Prototype {
 
         private void OnDrawGizmosSelected() {
             Gizmos.color = new Color(1f, 0.85f, 0.2f, 0.45f);
-            Gizmos.DrawWireSphere(transform.position, IntroQuestGame.DefaultInteractionRange);
+            Gizmos.DrawWireSphere(transform.position, QuestGame.DefaultInteractionRange);
         }
     }
 }

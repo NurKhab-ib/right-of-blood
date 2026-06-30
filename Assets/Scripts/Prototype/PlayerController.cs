@@ -1,8 +1,8 @@
-﻿using UnityEngine;
+using UnityEngine;
 using UnityEngine.InputSystem;
 
 namespace RightOfBlood.Prototype {
-    public sealed class PrototypePlayerController : MonoBehaviour {
+    public sealed class PlayerController : MonoBehaviour {
         public float Speed = 4f;
         public bool CanMove = true;
         public bool UseBounds = true;
@@ -20,7 +20,7 @@ namespace RightOfBlood.Prototype {
             if (movement.sqrMagnitude > 1f) movement.Normalize();
 
             var nextPosition = transform.position + (Vector3)(movement * Speed * Time.deltaTime);
-            if (UseBounds) {
+            if (UseBounds && MovementBounds.size.sqrMagnitude > 0.01f) {
                 nextPosition.x = Mathf.Clamp(nextPosition.x, MovementBounds.min.x + 0.3f, MovementBounds.max.x - 0.3f);
                 nextPosition.y = Mathf.Clamp(nextPosition.y, MovementBounds.min.y + 0.4f, MovementBounds.max.y - 0.4f);
             }
