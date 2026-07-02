@@ -158,7 +158,13 @@ namespace RightOfBlood.Prototype {
                         RouteFormerArchivist(interactable);
                         break;
                     case PrototypeInteractionKind.black_archive_door:
-                        interactable.SetVisible(!state.DocumentFound);
+                        interactable.SetVisible(true);
+                        break;
+                    case PrototypeInteractionKind.council_public_library:
+                        interactable.SetVisible(CanEnterCouncilLocation());
+                        break;
+                    case PrototypeInteractionKind.council_secret_library:
+                        interactable.SetVisible(CanShowSecretLibraryEntrance());
                         break;
                 }
             }
@@ -206,7 +212,8 @@ namespace RightOfBlood.Prototype {
         }
 
         private bool ShouldScholarWaitAtCouncil() {
-            return state.Access == AccessMethod.council || state.CouncilHasCopy || state.CouncilQuestStage != CouncilQuestStage.locked;
+            return state.Access == AccessMethod.council || state.CouncilHasCopy || state.CouncilQuestStage != CouncilQuestStage.locked ||
+                   state.Build == PlayerBuild.sage || state.PublicLibraryAccessUnlocked || state.CouncilReputation > 0;
         }
 
         private bool ShouldFixerWaitInCity() {
@@ -219,6 +226,8 @@ namespace RightOfBlood.Prototype {
 
         private bool ShouldFormerArchivistWaitInCity() {
             return state.CouncilQuestStage == CouncilQuestStage.investigate_intrigue ||
+                   state.BuildApproachQuestStatus == PrototypeQuestStatus.active ||
+                   state.BuildApproachQuestStatus == PrototypeQuestStatus.completed ||
                    (state.Stage == QuestStage.choose_archive_access && !state.DocumentFound);
         }
 
@@ -284,6 +293,12 @@ namespace RightOfBlood.Prototype {
             return state.Access == AccessMethod.mafia || state.MafiaReputation > 0 || state.MafiaHasCopy ||
                    state.CouncilQuestStage == CouncilQuestStage.negotiate_with_mafia || state.CriminalWorldAccess;
         }
+
+        private bool CanShowSecretLibraryEntrance() {
+            return CanEnterCouncilLocation() &&
+                   (state.SecretLibraryAccess || state.ProgressionBehaviorQuestStatus != PrototypeQuestStatus.locked ||
+                    state.PublicLibraryAccessUnlocked || state.Level >= 2);
+        }
         private static bool IsLegacyDepartmentEntrance(Interactable interactable) {
             return interactable != null && interactable.Kind == PrototypeInteractionKind.archive_investigator &&
                    interactable.name == "Department";
@@ -304,6 +319,8 @@ namespace RightOfBlood.Prototype {
                 case PrototypeInteractionKind.archive_security: TalkToArchiveSecurity(); break;
                 case PrototypeInteractionKind.archive_investigator: TalkToArchiveSecurity(); break;
                 case PrototypeInteractionKind.black_archive_door: TrySoloAccess(); break;
+                case PrototypeInteractionKind.council_public_library: VisitPublicLibrary(); break;
+                case PrototypeInteractionKind.council_secret_library: TrySecretLibraryAccess(); break;
                 case PrototypeInteractionKind.door:
                     TryTravel(interactable); break;
                 default: throw new ArgumentOutOfRangeException();
@@ -398,10 +415,29 @@ namespace RightOfBlood.Prototype {
                     return;
                 }
 
-                ShowMessage("Учёный Совета",
-                    state.CouncilHasCopy
-                        ? "Совет уже изучает копию. Ваш род упоминался в старой кровной таблице, но доступ к ней придётся заслужить."
-                        : "Если документ ещё у вас, Совет готов обсудить его позже.");
+                if (state.CouncilHasCopy) {
+                    ShowMessage("Учёный Совета", "Совет уже изучает копию. Ваш род упоминался в старой кровной таблице, но доступ к ней придётся заслужить.");
+                    return;
+                }
+
+                if (state.Build == PlayerBuild.sage || state.PublicLibraryAccessUnlocked || state.CouncilReputation > 0) {
+                    ShowDialogue("Учёный Совета",
+                        "Вы пришли как человек Совета, но документ после чёрного хода остался только у вас. Дайте нам копию, и мы сможем открыть дело о тайной библиотеке.",
+                        new[] {
+                            new DialogueChoice("Передать копию Совету", () => {
+                                state.CopyCreated = true;
+                                state.CouncilHasCopy = true;
+                                state.Owner = DocumentOwner.council;
+                                state.CouncilReputation += 1;
+                                TryUnlockCouncilQuest();
+                                ShowMessage("Копия передана", "Учёный уносит копию в закрытый зал Совета. Теперь проблема района Совета становится следующим шагом к тайной библиотеке.");
+                            }),
+                            new DialogueChoice("Оставить документ при себе", CloseDialogue)
+                        });
+                    return;
+                }
+
+                ShowMessage("Учёный Совета", "Если документ ещё у вас, Совет готов обсудить его позже.");
                 return;
             }
 
@@ -470,6 +506,107 @@ namespace RightOfBlood.Prototype {
                 });
         }
 
+        private void VisitPublicLibrary() {
+            if (!CanEnterCouncilLocation()) {
+                ShowMessage("Публичная библиотека Совета", "Без приглашения Совета магистрату не дают даже читательский журнал.");
+                return;
+            }
+
+            if (!state.PublicLibraryVisited) {
+                state.PublicLibraryVisited = true;
+                state.CouncilReputation += 1;
+                UnlockSkill(SkillId.public_library_access);
+                ApplyPublicLibraryAccess();
+                ShowMessage("Публичная библиотека Совета",
+                    "Открытый зал Совета становится доступен: каталоги, хроники болезней и имена старых архивных работников теперь можно проверять без посредников. Совет +1.");
+                return;
+            }
+
+            ShowMessage("Публичная библиотека Совета",
+                "В открытом зале остаются городские хроники, медицинские сводки и каталоги. Тайные полки видны за охраняемой дверью.");
+        }
+
+        private void TrySecretLibraryAccess() {
+            if (!CanShowSecretLibraryEntrance()) {
+                ShowMessage("Тайная библиотека", "За публичным залом есть закрытая дверь, но сейчас это просто стена запретов: нет допуска, статуса или зацепки.");
+                return;
+            }
+
+            RunProgressionBehaviorQuest();
+        }
+
+        private void OfferEpidemicQuest() {
+            UpdateAdvancedQuestAvailability();
+
+            if (state.BuildApproachQuestStatus == PrototypeQuestStatus.completed) {
+                ShowMessage("Бывший архивный работник", state.BuildApproachOutcome);
+                return;
+            }
+
+            if (state.BuildApproachQuestStatus == PrototypeQuestStatus.locked) {
+                ShowMessage("Бывший архивный работник",
+                    "Я слышал о болезни в нижнем квартале, но пока вы не проверите закрытое крыло архива, у вас нет нужной ниточки: это может быть обычная лихорадка, а может - след контрабанды.");
+                return;
+            }
+
+            state.EpidemicLeadLearned = true;
+            ShowDialogue("Бывший архивный работник",
+                "В нижнем квартале люди болеют после дешёвых лекарств с чёрного склада. В архивных описях есть тот же знак поставщика. Можно решить это законом, знанием Совета или ударом по складу.",
+                BuildEpidemicChoices());
+        }
+
+        private IReadOnlyList<DialogueChoice> BuildEpidemicChoices() {
+            var choices = new List<DialogueChoice>();
+
+            if (state.Build == PlayerBuild.magistrate || state.ServiceSealUnlocked || state.OfficialInfluence > 0) {
+                choices.Add(new DialogueChoice("Ввести карантин и досмотр", () => CompleteBuildApproachQuest(ResolveLawEpidemicResult())));
+            }
+
+            if (state.Build == PlayerBuild.sage || state.PublicLibraryAccessUnlocked || state.BloodEchoUnlocked) {
+                choices.Add(new DialogueChoice("Найти противоядие через Совет", () => CompleteBuildApproachQuest(ResolveSageEpidemicResult())));
+            }
+
+            if (state.Build == PlayerBuild.rogue || state.CriminalWorldAccess || state.ShadowEntryUnlocked) {
+                choices.Add(new DialogueChoice("Разгромить чёрный склад", () => CompleteBuildApproachQuest(ResolveRogueEpidemicResult())));
+            }
+
+            if (choices.Count == 0) {
+                choices.Add(new DialogueChoice("Изолировать квартал временно", () => CompleteBuildApproachQuest(ResolveDelayEpidemicResult())));
+            }
+
+            choices.Add(new DialogueChoice("Решить позже", CloseDialogue));
+            return choices;
+        }
+
+        private void CompleteBuildApproachQuest(string result) {
+            state.BuildApproachOutcome = result;
+            state.BuildApproachQuestStatus = PrototypeQuestStatus.completed;
+            ShowMessage("Квест 5: эпидемия и контрабанда", result);
+        }
+
+        private string ResolveLawEpidemicResult() {
+            state.OfficialInfluence += 1;
+            state.MafiaReputation -= 1;
+            state.OtherDistrictSafety -= 1;
+            return "Магистрат вводит карантин, ставит досмотр грузов и перекрывает поставку заражённых лекарств. Решение законное, но медленное: служебное влияние +1, мафия -1, безопасность других районов -1.";
+        }
+
+        private string ResolveSageEpidemicResult() {
+            state.CouncilReputation += 1;
+            state.CriminalWorldAccess = true;
+            return "Мудрец сверяет симптомы с хрониками публичной библиотеки и находит растение-противоядие. Сделка с перевозчиком открывает путь к складу: Совет +1, открыт криминальный маршрут.";
+        }
+
+        private string ResolveRogueEpidemicResult() {
+            state.MafiaReputation += 2;
+            state.ThreatLevel += 1;
+            return "Разбойник выходит на чёрный склад, сжигает товар и заставляет банду отступить. Быстро и грязно: мафия +2, угроза +1.";
+        }
+
+        private string ResolveDelayEpidemicResult() {
+            state.ThreatLevel += 1;
+            return "Без выбранного билда и связей проблему удаётся только отсрочить: квартал изолирован, но источник лекарств не найден. Угроза +1.";
+        }
         private void TalkToFormerArchivist() {
             if (state.CouncilQuestStage == CouncilQuestStage.investigate_intrigue) {
                 ShowDialogue("Бывший архивный работник",
@@ -486,8 +623,13 @@ namespace RightOfBlood.Prototype {
                 return;
             }
 
+            if (state.BuildApproachQuestStatus == PrototypeQuestStatus.active || state.BuildApproachQuestStatus == PrototypeQuestStatus.completed) {
+                OfferEpidemicQuest();
+                return;
+            }
+
             if (state.DocumentFound) {
-                ShowMessage("Бывший работник архива", "После такого следа охрана начнёт считать каждый ключ.");
+                ShowMessage("Бывший работник архива", "После такого следа охрана начнёт считать каждый ключ. Если слухи о нижнем квартале подтвердятся, приходите ко мне ещё раз.");
                 return;
             }
 
@@ -505,13 +647,13 @@ namespace RightOfBlood.Prototype {
         }
 
         private void TrySoloAccess() {
-            if (!state.BlackArchiveEntranceKnown) {
-                ShowMessage("Вход", "Магистрат не может пройти.");
+            if (state.DocumentFound || state.ScalingCheckQuestStatus == PrototypeQuestStatus.active) {
+                RunScalingCheckQuest();
                 return;
             }
 
-            if (state.DocumentFound) {
-                ShowMessage("Чёрный ход", "Дверь уже опечатана после происшествия.");
+            if (!state.BlackArchiveEntranceKnown) {
+                ShowMessage("Вход", "Магистрат не знает, что эта кладовая ведёт к закрытым полкам. Найдите бывшего работника архива в городе или другой намёк на обходной путь.");
                 return;
             }
 
@@ -825,10 +967,11 @@ namespace RightOfBlood.Prototype {
             RefreshProgressionFromReputation();
             UpdateAdvancedQuestAvailability();
             if (CanOfferFactionSwitch()) {
-                ShowFactionSwitchOffer("Этап " + state.Level + ": " + GetBuildName(build) + ".");
+                ShowFactionSwitchOffer(GetProgressionSummary() + ", этап " + state.Level);
             }
             else {
-                ShowMessage("Прогрессия обновлена", "Этап " + state.Level + ": " + GetBuildName(build) + ".\n" + GetProgressionSummary());
+                // ShowMessage("Прогрессия обновлена", "Этап " + state.Level + ": " + GetBuildName(build) + ".\n" + GetProgressionSummary());
+                ShowMessage("Прогрессия обновлена", GetProgressionSummary() + ", этап " + state.Level);
             }
         }
 
@@ -890,7 +1033,7 @@ namespace RightOfBlood.Prototype {
         }
 
         private bool CanOfferFactionSwitch() {
-            return state.Level <= 1;
+            return state.Level <= 1 && state.Build != PlayerBuild.magistrate;
         }
 
         private void RefreshProgressionFromReputation() {
@@ -1048,8 +1191,9 @@ namespace RightOfBlood.Prototype {
         }
 
         private string GetProgressionSummary() {
-            return "Этап " + state.Level + ", билд: " + GetBuildName(state.Build) +
-                   ", репутация " + GetCurrentBranchReputation() + "/" + GetNextReputationText() + ".";
+            // return "Этап " + state.Level + ", билд: " + GetBuildName(state.Build) +
+            //        ", репутация " + GetCurrentBranchReputation() + "/" + GetNextReputationText() + ".";
+            return GetBuildName(state.Build);
         }
 
         private string GetNextReputationText() {
@@ -1158,19 +1302,11 @@ namespace RightOfBlood.Prototype {
         public void RunBuildApproachQuest() {
             UpdateAdvancedQuestAvailability();
             if (state.BuildApproachQuestStatus == PrototypeQuestStatus.locked) {
-                ShowMessage("Проблема закрыта", "Сначала завершите квест 3: скейлинг проверки.");
+                ShowMessage("Проблема закрыта", "Сначала завершите квест 3: скейлинг проверки, затем найдите бывшего работника архива в городе.");
                 return;
             }
 
-            if (state.BuildApproachQuestStatus == PrototypeQuestStatus.completed) {
-                ShowMessage("Проблема уже решена", state.BuildApproachOutcome);
-                return;
-            }
-
-            var result = ResolveBuildApproachResult();
-            state.BuildApproachOutcome = result;
-            state.BuildApproachQuestStatus = PrototypeQuestStatus.completed;
-            ShowMessage("Квест 5: разные билды решают по-разному", result);
+            OfferEpidemicQuest();
         }
 
         public string GetReputationPanelText() {

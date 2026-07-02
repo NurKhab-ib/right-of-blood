@@ -90,7 +90,9 @@ namespace RightOfBlood.Prototype {
         archive_shelf = 6,
         archive_investigator = 7,
         black_archive_door = 8,
-        door = 9
+        door = 9,
+        council_public_library = 10,
+        council_secret_library = 11
     }
 
     [Serializable]
@@ -122,6 +124,8 @@ namespace RightOfBlood.Prototype {
         public bool CouncilBlackmailLeverage;
         public bool SecretLibraryAccess;
         public bool BloodMagicAdvancedUnlocked;
+        public bool PublicLibraryVisited;
+        public bool EpidemicLeadLearned;
         public PlayerBuild Build = PlayerBuild.undecided;
         public ProgressionChoice SecondDevelopmentChoice = ProgressionChoice.none;
         public int Level = 1;
