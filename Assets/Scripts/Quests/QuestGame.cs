@@ -17,6 +17,7 @@ namespace RightOfBlood.Prototype {
         [SerializeField] private float interactionRange = DefaultInteractionRange;
 
         [Header("Manual UI")] [SerializeField] private QuestUI questUi;
+        [SerializeField] private ProgressionUIHandler progressionUi;
 
         private readonly List<Location> locations = new List<Location>();
         private readonly List<Interactable> interactables = new List<Interactable>();
@@ -37,6 +38,7 @@ namespace RightOfBlood.Prototype {
             RefreshSceneReferences();
             if (questUi == null) questUi = FindFirstObjectByType<QuestUI>();
             if (questUi != null) questUi.HideDialogue();
+            ResolveProgressionUi();
             LoadLocation(initialLocation, initialSpawnId);
             RefreshUi();
         }
@@ -772,14 +774,15 @@ namespace RightOfBlood.Prototype {
 
         private void ShowProgressionTree() {
             RefreshProgressionFromReputation();
-            ShowDialogue("Дерево навыков",
-                BuildProgressionTreeText() + "\n\nДоступны только 1-ые уровни веток: они имитируют получение достаточной репутации для перехода ко 2-му этапу",
-                new[] {
-                    new DialogueChoice("Архивариус", () => SimulateProgressionStage(PlayerBuild.magistrate, 1)),
-                    new DialogueChoice("Прихожанин Совета", () => SimulateProgressionStage(PlayerBuild.sage, 1)),
-                    new DialogueChoice("Новобранец мафии", () => SimulateProgressionStage(PlayerBuild.rogue, 1)),
-                    new DialogueChoice("Назад", CloseDialogue)
-                });
+            CloseDialogue();
+
+            var progressionPanel = ResolveProgressionUi();
+            if (progressionPanel != null) {
+                progressionPanel.OpenProgressionTree();
+                return;
+            }
+
+            Debug.LogWarning("ProgressionUIHandler not found. Skill tree panel cannot be opened.");
         }
 
         private void SimulateProgressionStage(PlayerBuild build, int targetLevel) {
@@ -1335,6 +1338,14 @@ namespace RightOfBlood.Prototype {
             if (questUi == null) return;
             var prompt = player == null ? "no Player w PrototypePlayerController" : currentPrompt;
             questUi.RefreshHud(state, GetObjectiveText(), prompt);
+        }
+
+        private ProgressionUIHandler ResolveProgressionUi() {
+            if (progressionUi == null) {
+                progressionUi = FindFirstObjectByType<ProgressionUIHandler>(FindObjectsInactive.Include);
+            }
+
+            return progressionUi;
         }
     }
 }
