@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -392,7 +393,7 @@ namespace RightOfBlood.Prototype {
             }
 
             if (state.DocumentFound) {
-                if (state.Build != PlayerBuild.sage && GetCurrentBranchReputation() >= ProgressionModel.ReputationForSecondLevel) {
+                if (CanOfferFactionSwitch() && state.Build != PlayerBuild.sage && GetCurrentBranchReputation() >= ProgressionModel.ReputationForSecondLevel) {
                     ShowFactionSwitchOffer("Учёный Совета предлагает сменить фракцию.");
                     return;
                 }
@@ -440,7 +441,7 @@ namespace RightOfBlood.Prototype {
             }
 
             if (state.DocumentFound) {
-                if (state.Build != PlayerBuild.rogue && GetCurrentBranchReputation() >= ProgressionModel.ReputationForSecondLevel) {
+                if (CanOfferFactionSwitch() && state.Build != PlayerBuild.rogue && GetCurrentBranchReputation() >= ProgressionModel.ReputationForSecondLevel) {
                     ShowFactionSwitchOffer("Посредник мафии предлагает сменить фракцию.");
                     return;
                 }
@@ -725,9 +726,9 @@ namespace RightOfBlood.Prototype {
         private void ShowPostQuestHub(string speaker) {
             RefreshProgressionFromReputation();
             ShowDialogue(speaker,
-                "После вводного квеста используй дерево навыков для моделирования 1-ых уровней разных веток.\n\n" + GetProgressionSummary(),
+                "После вводного квеста используй дерево навыков для симуляции 1-ых уровней разных веток.\n" + GetProgressionSummary(),
                 new[] {
-                    new DialogueChoice("Открыть дерево навыков", ShowProgressionTree),
+                    new DialogueChoice("Дерево навыков", ShowProgressionTree),
                     new DialogueChoice("закрыть", CloseDialogue)
                 });
         }
@@ -793,6 +794,8 @@ namespace RightOfBlood.Prototype {
             state.Level = targetLevel;
             state.Stage = QuestStage.completed;
             state.DocumentFound = true;
+            ResetSimulatedProgressionUnlocks();
+            ApplySimulatedBranchAccess(build, targetLevel);
             state.BloodKnowledgeUnlocked = true;
 
             if (build == PlayerBuild.magistrate) {
@@ -821,7 +824,12 @@ namespace RightOfBlood.Prototype {
 
             RefreshProgressionFromReputation();
             UpdateAdvancedQuestAvailability();
-            ShowFactionSwitchOffer("Этап " + state.Level + ": " + GetBuildName(build) + ".");
+            if (CanOfferFactionSwitch()) {
+                ShowFactionSwitchOffer("Этап " + state.Level + ": " + GetBuildName(build) + ".");
+            }
+            else {
+                ShowMessage("Прогрессия обновлена", "Этап " + state.Level + ": " + GetBuildName(build) + ".\n" + GetProgressionSummary());
+            }
         }
 
         private static int GetReputationForSimulatedLevel(int level) {
@@ -831,6 +839,11 @@ namespace RightOfBlood.Prototype {
         }
 
         private void ShowFactionSwitchOffer(string leadText) {
+            if (!CanOfferFactionSwitch()) {
+                ShowMessage("Прогрессия обновлена", leadText + "\n" + GetProgressionSummary());
+                return;
+            }
+
             var choices = new List<DialogueChoice>();
             if (state.Build != PlayerBuild.sage) choices.Add(new DialogueChoice("Уйти в Совет", () => SwitchFaction(PlayerBuild.sage)));
             if (state.Build != PlayerBuild.rogue) choices.Add(new DialogueChoice("Переметнуться к мафии", () => SwitchFaction(PlayerBuild.rogue)));
@@ -876,6 +889,10 @@ namespace RightOfBlood.Prototype {
             return state.Stage == QuestStage.completed && state.OfficialAttemptBlocked;
         }
 
+        private bool CanOfferFactionSwitch() {
+            return state.Level <= 1;
+        }
+
         private void RefreshProgressionFromReputation() {
             if (state.Build == PlayerBuild.undecided) return;
 
@@ -893,6 +910,51 @@ namespace RightOfBlood.Prototype {
                 case PlayerBuild.sage: return state.CouncilReputation;
                 case PlayerBuild.rogue: return state.MafiaReputation;
                 default: return 0;
+            }
+        }
+
+        private void ResetSimulatedProgressionUnlocks() {
+            state.ServiceSealUnlocked = false;
+            state.ArchiveProcedureUnlocked = false;
+            state.BloodEchoUnlocked = false;
+            state.CouncilCipherUnlocked = false;
+            state.ShadowEntryUnlocked = false;
+            state.StreetDebtUnlocked = false;
+            state.ArchiveDocumentTheftUnlocked = false;
+            state.PublicLibraryAccessUnlocked = false;
+            state.AncientBloodMandateUnlocked = false;
+
+            state.Access = AccessMethod.none;
+            state.CanEnterRestrictedArchive = false;
+            state.CouncilHasCopy = false;
+            state.MafiaHasCopy = false;
+            state.PlayerOnlyAccess = false;
+            state.CriminalWorldAccess = false;
+            state.SecretLibraryAccess = false;
+            state.BloodMagicAdvancedUnlocked = false;
+            state.CopyCreated = false;
+            state.Owner = DocumentOwner.player;
+        }
+
+        private void ApplySimulatedBranchAccess(PlayerBuild build, int targetLevel) {
+            state.BloodMagicAdvancedUnlocked = targetLevel >= 3;
+
+            if (build == PlayerBuild.magistrate) {
+                state.CanEnterRestrictedArchive = targetLevel >= 2;
+            }
+            else if (build == PlayerBuild.sage) {
+                state.Access = AccessMethod.council;
+                state.CouncilHasCopy = true;
+                state.CopyCreated = true;
+                state.CanEnterRestrictedArchive = true;
+                state.SecretLibraryAccess = targetLevel >= 3;
+            }
+            else if (build == PlayerBuild.rogue) {
+                state.Access = AccessMethod.mafia;
+                state.MafiaHasCopy = true;
+                state.CopyCreated = true;
+                state.CanEnterRestrictedArchive = true;
+                state.CriminalWorldAccess = true;
             }
         }
 
@@ -974,8 +1036,7 @@ namespace RightOfBlood.Prototype {
         private string BuildProgressionTreeText() {
             return "Магистрат: Архивариус - Управляющий архивом - Управляющий городом\n" +
                    "Мудрец: Прихожанин Совета - Кандидат в Совет - Член Совета\n" +
-                   "Разбойник: Новобранец - Бывалый - Глава гильдии\n\n" +
-                   "Навыки: " + GetUnlockedSkillsText();
+                   "Разбойник: Новобранец - Бывалый - Глава гильдии";
         }
 
         private string GetBuildSummary(PlayerBuild build) {
@@ -983,14 +1044,12 @@ namespace RightOfBlood.Prototype {
             if (info == null) return "Билд не выбран";
 
             return info.Name + ": " + info.Fantasy + "\nСила: " + info.Strength +
-                   "\nСлабость: " + info.Weakness + "\nРесурс: " + info.Resource +
-                   "\nНавыки: " + GetUnlockedSkillsText();
+                   "\nСлабость: " + info.Weakness + "\nРесурс: " + info.Resource;
         }
 
         private string GetProgressionSummary() {
             return "Этап " + state.Level + ", билд: " + GetBuildName(state.Build) +
-                   ", репутация " + GetCurrentBranchReputation() + "/" + GetNextReputationText() +
-                   ".\nНавыки: " + GetUnlockedSkillsText();
+                   ", репутация " + GetCurrentBranchReputation() + "/" + GetNextReputationText() + ".";
         }
 
         private string GetNextReputationText() {
@@ -1012,6 +1071,53 @@ namespace RightOfBlood.Prototype {
             return names.Count == 0 ? "none" : string.Join(", ", names);
         }
 
+        public string GetSkillsPanelText() {
+            RefreshProgressionFromReputation();
+
+            var builder = new StringBuilder();
+            // builder.AppendLine("Текущая ветка: " + GetBuildName(state.Build) + " | Этап " + state.Level + " | Репутация " + GetCurrentBranchReputation() + "/" + GetNextReputationText());
+            // builder.AppendLine();
+
+            foreach (var skill in ProgressionModel.Skills) {
+                var unlocked = HasSkill(skill.Id);
+
+                if (!unlocked) {
+                    continue;
+                }
+                
+                // builder.AppendLine(GetSkillKindName(skill.Kind) + " навык - " + (unlocked ? "[ открыт ] " : "[ закрыт ] "));
+                builder.AppendLine("[ " + GetSkillKindName(skill.Kind) + " ] " + skill.Name + " - ");
+                builder.AppendLine(skill.Description);
+                builder.AppendLine(skill.Usage);
+                // if (!unlocked) builder.AppendLine("Как открыть: " + GetSkillUnlockHint(skill));
+                builder.AppendLine();
+            }
+
+            return builder.ToString().TrimEnd();
+        }
+
+        private string GetSkillUnlockHint(SkillInfo skill) {
+            var requiredBranch = skill.Branch == PlayerBuild.undecided || state.Build == skill.Branch;
+            var requiredSkillMet = !skill.RequiredSkill.HasValue || HasSkill(skill.RequiredSkill.Value);
+
+            if (!requiredBranch) return "выбрать ветку " + GetSkillBranchName(skill.Branch) + ".";
+            if (state.Level < skill.RequiredLevel) return "достичь этапа " + skill.RequiredLevel + " в этой ветке.";
+            if (!requiredSkillMet) return "сначала открыть " + ProgressionModel.GetSkill(skill.RequiredSkill.Value).Name + ".";
+            return "будет открыт при следующем обновлении прогрессии.";
+        }
+
+        private static string GetSkillKindName(SkillKind kind) {
+            switch (kind) {
+                case SkillKind.active: return "активный";
+                case SkillKind.passive: return "пассивный";
+                case SkillKind.keystone: return "ключевой";
+                default: return kind.ToString();
+            }
+        }
+
+        private string GetSkillBranchName(PlayerBuild build) {
+            return build == PlayerBuild.undecided ? "общая" : GetBuildName(build);
+        }
         public void RunScalingCheckQuest() {
             UpdateAdvancedQuestAvailability();
             if (state.ScalingCheckQuestStatus == PrototypeQuestStatus.locked) {
@@ -1073,14 +1179,13 @@ namespace RightOfBlood.Prototype {
                    "Мафия: " + state.MafiaReputation + "\n" +
                    "Служебное влияние: " + state.OfficialInfluence + "\n" +
                    "Текущая ветка: " + GetBuildName(state.Build) + "\n" +
-                   "Репутация ветки: " + GetCurrentBranchReputation() + "/" + GetNextReputationText() + "\n" +
-                   "Угроза: " + state.ThreatLevel;
+                   "Репутация ветки: " + GetCurrentBranchReputation() + "/" + GetNextReputationText();
+            //  + "\n" + "Угроза: " + state.ThreatLevel;
         }
 
         public string GetDebugFlagsPanelText() {
             UpdateAdvancedQuestAvailability();
-            return "Флаги\n" +
-                   "IntroQuestStarted: " + state.IntroQuestStarted + "\n" +
+            return "IntroQuestStarted: " + state.IntroQuestStarted + "\n" +
                    "DocumentFound: " + state.DocumentFound + "\n" +
                    "CouncilHasCopy: " + state.CouncilHasCopy + "\n" +
                    "MafiaHasCopy: " + state.MafiaHasCopy + "\n" +

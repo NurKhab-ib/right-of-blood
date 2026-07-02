@@ -14,6 +14,7 @@ namespace RightOfBlood.Prototype {
         [SerializeField] private bool hidePanelsOnAwake = true;
 
         [Header("Text")]
+        [SerializeField] private TMP_Text skillsText;
         [SerializeField] private TMP_Text reputationText;
         [SerializeField] private TMP_Text flagsText;
         [SerializeField] private TMP_Text questsText;
@@ -45,10 +46,12 @@ namespace RightOfBlood.Prototype {
 
         public void OpenSkillsPanel() {
             OpenOnly(skillsPanel);
+            RefreshSkillsText();
         }
 
         public void ToggleSkillsPanel() {
             ToggleOnly(skillsPanel);
+            RefreshSkillsText();
         }
 
         public void CloseProgressionTree() {
@@ -165,11 +168,16 @@ namespace RightOfBlood.Prototype {
         }
 
         public void RefreshVisiblePanelText() {
+            if (IsPanelOpen(skillsPanel)) RefreshSkillsText();
             if (IsPanelOpen(reputationPanel)) RefreshReputationText();
             if (IsPanelOpen(flagsPanel)) RefreshFlagsText();
             if (IsPanelOpen(questsPanel)) RefreshQuestsText();
         }
 
+        private void RefreshSkillsText() {
+            var questGame = ResolveGame();
+            if (skillsText != null && questGame != null) skillsText.text = questGame.GetSkillsPanelText();
+        }
         private void RefreshReputationText() {
             var questGame = ResolveGame();
             if (reputationText != null && questGame != null) reputationText.text = questGame.GetReputationPanelText();
