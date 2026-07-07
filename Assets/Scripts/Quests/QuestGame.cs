@@ -25,6 +25,7 @@ namespace RightOfBlood.Prototype {
         private readonly List<DialogueChoice> activeChoices = new List<DialogueChoice>();
 
         private IntroQuestState state;
+        private BalanceHandler balanceHandler;
         private PlayerController player;
         private Interactable nearestInteractable;
         private bool dialogueOpen;
@@ -33,6 +34,43 @@ namespace RightOfBlood.Prototype {
 
         private void Awake() {
             state = new IntroQuestState();
+            balanceHandler = new BalanceHandler(state, () => currentLocation);
+        }
+
+        private void ApplyInfluenceDelta(int delta, string source) {
+            balanceHandler?.ApplyInfluenceDelta(delta, source);
+        }
+
+        private void ApplyKnowledgeDelta(int delta, string source) {
+            balanceHandler?.ApplyKnowledgeDelta(delta, source);
+        }
+
+        private void ApplyStrengthDelta(int delta, string source) {
+            balanceHandler?.ApplyStrengthDelta(delta, source);
+        }
+
+        private void ApplyBranchSupport(PlayerBuild build, int supportedDelta, int competitorDelta, string source) {
+            balanceHandler?.ApplyBranchSupport(build, supportedDelta, competitorDelta, source);
+        }
+
+        private void ApplyThreatDelta(int delta, string source) {
+            balanceHandler?.ApplyThreatDelta(delta, source);
+        }
+
+        private void SetMinimumInfluence(int minimum, string source) {
+            balanceHandler?.SetMinimumInfluence(minimum, source);
+        }
+
+        private void SetMinimumKnowledge(int minimum, string source) {
+            balanceHandler?.SetMinimumKnowledge(minimum, source);
+        }
+
+        private void SetMinimumStrength(int minimum, string source) {
+            balanceHandler?.SetMinimumStrength(minimum, source);
+        }
+
+        private void RecalculateThreat(string source) {
+            balanceHandler?.RecalculateThreat(source);
         }
 
         private void Start() {
@@ -369,7 +407,7 @@ namespace RightOfBlood.Prototype {
                     new DialogueChoice("Не расследовать", () => {
                         state.IgnoredFirstHook = true;
                         state.Stage = QuestStage.choose_archive_access;
-                        state.ThreatLevel += 1;
+                        ApplyThreatDelta(1, "Начальник отдела: проигнорировать расследование");
                         ShowMessage("X days later..",
                             "Магистрат всячески игнорирует пропажу, но след документа всплывает снова. Теперь промедление выглядит опаснее.");
                     })
@@ -395,7 +433,7 @@ namespace RightOfBlood.Prototype {
                     new DialogueChoice("Подать служебный запрос", () => {
                         state.Access = AccessMethod.official_blocked;
                         state.OfficialAttemptBlocked = true;
-                        state.OfficialInfluence = Math.Max(0, state.OfficialInfluence - 1);
+                        ApplyInfluenceDelta(-1, "Охрана архива: служебный запрос отклонён");
                         ShowMessage("Служебный путь заблокирован",
                             "Начальник отдела отклоняет запрос по собственным мотивам. Документ не найден.");
                     }),
@@ -428,7 +466,7 @@ namespace RightOfBlood.Prototype {
                                 state.CopyCreated = true;
                                 state.CouncilHasCopy = true;
                                 state.Owner = DocumentOwner.council;
-                                state.CouncilReputation += 1;
+                                ApplyKnowledgeDelta(1, "Ученый Совета: передача копии");
                                 TryUnlockCouncilQuest();
                                 ShowMessage("Копия передана", "Учёный уносит копию в закрытый зал Совета. Теперь проблема района Совета становится следующим шагом к тайной библиотеке.");
                             }),
@@ -448,9 +486,9 @@ namespace RightOfBlood.Prototype {
                         state.Access = AccessMethod.council;
                         state.Stage = QuestStage.find_document_in_archive;
                         state.CanEnterRestrictedArchive = true;
-                        state.CouncilReputation += 2;
-                        state.MafiaReputation -= 1;
-                        state.ThreatLevel += 1;
+                        ApplyKnowledgeDelta(2, "Ученый Совета: получить доступ");
+                        ApplyStrengthDelta(-1, "Ученый Совета: помощь Совета снижает уличное давление");
+                        ApplyThreatDelta(1, "Ученый Совета: временный пропуск");
                         ShowMessage("Доступ Совета получен",
                             "Учёный выдаёт временный пропуск в архив - за это Совет получит копию документа.");
                     }),
@@ -465,10 +503,10 @@ namespace RightOfBlood.Prototype {
                     new[] {
                         new DialogueChoice("Выполнить поручение мафии", () => {
                             state.CouncilSolution = CouncilProblemSolution.criminal;
-                            state.MafiaReputation += 2;
-                            state.CouncilReputation -= 1;
+                            ApplyStrengthDelta(2, "Посредник мафии: поручение выполнено");
+                            ApplyKnowledgeDelta(-1, "Посредник мафии: ухудшение отношений с Советом");
                             state.CriminalWorldAccess = true;
-                            state.ThreatLevel += 1;
+                            ApplyThreatDelta(1, "Посредник мафии: ответная реакция");
                             FinishCouncilQuest("Мафия отзывает людей от здания Совета. Совет получает тишину, но понимает, что вы решили проблему чужими руками.");
                         }),
                         new DialogueChoice("Отказаться", CloseDialogue)
@@ -496,9 +534,9 @@ namespace RightOfBlood.Prototype {
                         state.Access = AccessMethod.mafia;
                         state.Stage = QuestStage.find_document_in_archive;
                         state.CanEnterRestrictedArchive = true;
-                        state.MafiaReputation += 2;
-                        state.CouncilReputation -= 1;
-                        state.ThreatLevel += 1;
+                        ApplyStrengthDelta(2, "Посредник мафии: получить доступ");
+                        ApplyKnowledgeDelta(-1, "Посредник мафии: ухудшение отношений с Советом");
+                        ApplyThreatDelta(1, "Посредник мафии: временный пропуск");
                         ShowMessage("Доступ мафии получен",
                             "Посредник даёт знак архивариусу - за это мафия получит копию документа.");
                     }),
@@ -514,7 +552,7 @@ namespace RightOfBlood.Prototype {
 
             if (!state.PublicLibraryVisited) {
                 state.PublicLibraryVisited = true;
-                state.CouncilReputation += 1;
+                ApplyKnowledgeDelta(1, "Публичная библиотека Совета");
                 UnlockSkill(SkillId.public_library_access);
                 ApplyPublicLibraryAccess();
                 ShowMessage("Публичная библиотека Совета",
@@ -585,26 +623,26 @@ namespace RightOfBlood.Prototype {
         }
 
         private string ResolveLawEpidemicResult() {
-            state.OfficialInfluence += 1;
-            state.MafiaReputation -= 1;
+            ApplyInfluenceDelta(1, "Квест Совета: законный путь");
+            ApplyStrengthDelta(-1, "Квест Совета: законный путь");
             state.OtherDistrictSafety -= 1;
             return "Магистрат вводит карантин, ставит досмотр грузов и перекрывает поставку заражённых лекарств. Решение законное, но медленное: служебное влияние +1, мафия -1, безопасность других районов -1.";
         }
 
         private string ResolveSageEpidemicResult() {
-            state.CouncilReputation += 1;
+            ApplyKnowledgeDelta(1, "Квест Совета: путь Совета");
             state.CriminalWorldAccess = true;
             return "Мудрец сверяет симптомы с хрониками публичной библиотеки и находит растение-противоядие. Сделка с перевозчиком открывает путь к складу: Совет +1, открыт криминальный маршрут.";
         }
 
         private string ResolveRogueEpidemicResult() {
-            state.MafiaReputation += 2;
-            state.ThreatLevel += 1;
+            ApplyStrengthDelta(2, "Квест Совета: криминальный путь");
+            ApplyThreatDelta(1, "Квест Совета: криминальный путь");
             return "Разбойник выходит на чёрный склад, сжигает товар и заставляет банду отступить. Быстро и грязно: мафия +2, угроза +1.";
         }
 
         private string ResolveDelayEpidemicResult() {
-            state.ThreatLevel += 1;
+            ApplyThreatDelta(1, "Квест Совета: интрига");
             return "Без выбранного билда и связей проблему удаётся только отсрочить: квартал изолирован, но источник лекарств не найден. Угроза +1.";
         }
         private void TalkToFormerArchivist() {
@@ -638,7 +676,7 @@ namespace RightOfBlood.Prototype {
                 new[] {
                     new DialogueChoice("Запомнить путь", () => {
                         state.BlackArchiveEntranceKnown = true;
-                        state.ThreatLevel += 1;
+                        ApplyThreatDelta(1, "Бывший работник архива: черный ход");
                         ShowMessage("Зацепка",
                             "Теперь можно попробовать самостоятельный доступ через чёрный ход у здания архива.");
                     }),
@@ -665,7 +703,7 @@ namespace RightOfBlood.Prototype {
                         state.Stage = QuestStage.find_document_in_archive;
                         state.CanEnterRestrictedArchive = true;
                         state.PlayerOnlyAccess = true;
-                        state.ThreatLevel += 2;
+                        ApplyThreatDelta(2, "Черный ход архива: самостоятельное проникновение");
                         CloseDialogue();
                         LoadLocation(LocationId.archive, "solo");
                     }),
@@ -697,20 +735,20 @@ namespace RightOfBlood.Prototype {
                 state.CopyCreated = true;
                 state.CouncilHasCopy = true;
                 state.Owner = DocumentOwner.council;
-                state.CouncilReputation += 1;
+                ApplyKnowledgeDelta(1, "Поведение прогрессии: Совет");
             }
             else if (state.Access == AccessMethod.mafia) {
                 state.CopyCreated = true;
                 state.MafiaHasCopy = true;
                 state.Owner = DocumentOwner.mafia;
-                state.MafiaReputation += 1;
+                ApplyStrengthDelta(1, "Кража документа: копия у мафии");
             }
             else {
                 state.Owner = DocumentOwner.player;
                 state.PlayerOnlyAccess = true;
-                state.CouncilReputation -= 1;
-                state.MafiaReputation -= 1;
-                state.ThreatLevel += 1;
+                ApplyKnowledgeDelta(-1, "Кража документа: документ только у игрока");
+                ApplyStrengthDelta(-1, "Кража документа: документ только у игрока");
+                ApplyThreatDelta(1, "Кража документа: самостоятельный риск");
             }
 
             TryUnlockCouncilQuest();
@@ -793,9 +831,9 @@ namespace RightOfBlood.Prototype {
 
             state.CouncilSolution = CouncilProblemSolution.law;
             state.CouncilDistrictSecured = true;
-            state.CouncilReputation += 2;
-            state.MafiaReputation -= 2;
-            state.OfficialInfluence = Math.Max(0, state.OfficialInfluence - 1);
+            ApplyKnowledgeDelta(2, "Квест Совета: законный выбор");
+            ApplyStrengthDelta(-2, "Квест Совета: законный выбор");
+            ApplyInfluenceDelta(-1, "Квест Совета: законный выбор");
             state.OtherDistrictSafety -= 1;
             FinishCouncilQuest("Патрули защищают район Совета от преступников. Совет благодарен, мафия злится, а безопасность других улиц проседает.");
         }
@@ -842,18 +880,18 @@ namespace RightOfBlood.Prototype {
             state.ProgressionIntroSeen = true;
 
             if (build == PlayerBuild.sage) {
-                state.CouncilReputation = Math.Max(state.CouncilReputation, 1);
+                SetMinimumKnowledge(1, "Выбор билда: Совет");
                 UnlockSkill(SkillId.public_library_access);
                 ApplyPublicLibraryAccess();
                 TryUnlockCouncilQuest();
             }
             else if (build == PlayerBuild.rogue) {
-                state.MafiaReputation = Math.Max(state.MafiaReputation, 1);
+                SetMinimumStrength(1, "Выбор билда: мафия");
                 state.CriminalWorldAccess = true;
                 UnlockSkill(SkillId.shadow_entry);
             }
             else if (build == PlayerBuild.magistrate) {
-                state.OfficialInfluence = Math.Max(state.OfficialInfluence, 1);
+                SetMinimumInfluence(1, "Выбор билда: служба");
                 UnlockSkill(SkillId.service_seal);
             }
 
@@ -941,12 +979,12 @@ namespace RightOfBlood.Prototype {
             state.BloodKnowledgeUnlocked = true;
 
             if (build == PlayerBuild.magistrate) {
-                state.OfficialInfluence = GetReputationForSimulatedLevel(targetLevel);
+                ApplyInfluenceDelta(GetReputationForSimulatedLevel(targetLevel) - state.OfficialInfluence, "Симуляция магистрата");
                 UnlockSkill(SkillId.service_seal);
             }
             else if (build == PlayerBuild.sage) {
-                state.CouncilReputation = GetReputationForSimulatedLevel(targetLevel);
-                state.OfficialInfluence = 0;
+                ApplyKnowledgeDelta(GetReputationForSimulatedLevel(targetLevel) - state.CouncilReputation, "Симуляция Совета");
+                ApplyInfluenceDelta(-state.OfficialInfluence, "Симуляция Совета");
                 state.Access = AccessMethod.council;
                 state.CouncilHasCopy = true;
                 state.Owner = DocumentOwner.council;
@@ -955,8 +993,8 @@ namespace RightOfBlood.Prototype {
                 TryUnlockCouncilQuest();
             }
             else if (build == PlayerBuild.rogue) {
-                state.MafiaReputation = GetReputationForSimulatedLevel(targetLevel);
-                state.OfficialInfluence = 0;
+                ApplyStrengthDelta(GetReputationForSimulatedLevel(targetLevel) - state.MafiaReputation, "Симуляция мафии");
+                ApplyInfluenceDelta(-state.OfficialInfluence, "Симуляция мафии");
                 state.Access = AccessMethod.mafia;
                 state.MafiaHasCopy = true;
                 state.Owner = DocumentOwner.mafia;
@@ -1003,24 +1041,24 @@ namespace RightOfBlood.Prototype {
             state.Build = targetBuild;
             state.Level = 1;
             state.SecondDevelopmentChoiceMade = false;
-            state.ThreatLevel += oldBuild == PlayerBuild.undecided ? 0 : 1;
+            ApplyThreatDelta(oldBuild == PlayerBuild.undecided ? 0 : 1, "Смена фракции");
 
             if (targetBuild == PlayerBuild.sage) {
                 state.CouncilReputation = Math.Max(1, state.CouncilReputation + 1);
-                state.MafiaReputation -= oldBuild == PlayerBuild.rogue ? 2 : 1;
+                ApplyStrengthDelta(-(oldBuild == PlayerBuild.rogue ? 2 : 1), "Смена фракции: переход в Совет");
                 UnlockSkill(SkillId.public_library_access);
                 ApplyPublicLibraryAccess();
             }
             else if (targetBuild == PlayerBuild.rogue) {
                 state.MafiaReputation = Math.Max(1, state.MafiaReputation + 1);
-                state.CouncilReputation -= oldBuild == PlayerBuild.sage ? 2 : 1;
+                ApplyKnowledgeDelta(-(oldBuild == PlayerBuild.sage ? 2 : 1), "Смена фракции: переход к мафии");
                 state.CriminalWorldAccess = true;
                 UnlockSkill(SkillId.shadow_entry);
             }
             else if (targetBuild == PlayerBuild.magistrate) {
                 state.OfficialInfluence = Math.Max(1, state.OfficialInfluence + 1);
-                state.CouncilReputation -= oldBuild == PlayerBuild.sage ? 1 : 0;
-                state.MafiaReputation -= oldBuild == PlayerBuild.rogue ? 1 : 0;
+                ApplyKnowledgeDelta(-(oldBuild == PlayerBuild.sage ? 1 : 0), "Смена фракции: возврат к службе");
+                ApplyStrengthDelta(-(oldBuild == PlayerBuild.rogue ? 1 : 0), "Смена фракции: возврат к службе");
                 UnlockSkill(SkillId.service_seal);
             }
 
@@ -1125,6 +1163,8 @@ namespace RightOfBlood.Prototype {
         }
 
         private void UnlockSkill(SkillId skill) {
+            var alreadyUnlocked = HasSkill(skill);
+
             switch (skill) {
                 case SkillId.service_seal: state.ServiceSealUnlocked = true; break;
                 case SkillId.archive_procedure: state.ArchiveProcedureUnlocked = true; break;
@@ -1136,6 +1176,10 @@ namespace RightOfBlood.Prototype {
                 case SkillId.public_library_access: state.PublicLibraryAccessUnlocked = true; break;
                 case SkillId.archive_document_theft: state.ArchiveDocumentTheftUnlocked = true; break;
                 default: throw new ArgumentOutOfRangeException(nameof(skill), skill, null);
+            }
+
+            if (!alreadyUnlocked && balanceHandler != null) {
+                balanceHandler.LogSkillActivation(skill, "Квест или этап прогрессии");
             }
         }
 
@@ -1156,7 +1200,7 @@ namespace RightOfBlood.Prototype {
 
         private void ApplyPublicLibraryAccess() {
             if (!state.PublicLibraryAccessUnlocked) return;
-            state.CouncilReputation = Math.Max(state.CouncilReputation, 1);
+            SetMinimumKnowledge(1, "Публичная библиотека Совета");
             state.BloodKnowledgeUnlocked = true;
         }
 
@@ -1169,7 +1213,7 @@ namespace RightOfBlood.Prototype {
             }
 
             state.LastArchiveDocumentTheftTime = Time.time;
-            state.CouncilReputation += 1;
+            ApplyKnowledgeDelta(1, "Эпидемия и контрабанда: Совет помогает");
             state.BloodKnowledgeUnlocked = true;
             RefreshProgressionFromReputation();
             ShowMessage("Кража документа из архива", "Ты украл тонкую папку из архива, за что получил репутацию у совета");
@@ -1219,28 +1263,36 @@ namespace RightOfBlood.Prototype {
             RefreshProgressionFromReputation();
 
             var builder = new StringBuilder();
-            // builder.AppendLine("Текущая ветка: " + GetBuildName(state.Build) + " | Этап " + state.Level + " | Репутация " + GetCurrentBranchReputation() + "/" + GetNextReputationText());
-            // builder.AppendLine();
-
+            
             foreach (var skill in ProgressionModel.Skills) {
-                var unlocked = HasSkill(skill.Id);
-
-                if (!unlocked) {
-                    continue;
+                if (HasSkill(skill.Id)) {
+                    AppendSkillEntry(builder, skill, true);
                 }
-                
-                // builder.AppendLine(GetSkillKindName(skill.Kind) + " навык - " + (unlocked ? "[ открыт ] " : "[ закрыт ] "));
-                builder.AppendLine("[ " + GetSkillKindName(skill.Kind) + " ] " + skill.Name + " - ");
-                builder.AppendLine(skill.Description);
-                builder.AppendLine(skill.Usage);
-                // if (!unlocked) builder.AppendLine("Как открыть: " + GetSkillUnlockHint(skill));
-                builder.AppendLine();
+            }
+
+            builder.AppendLine();
+            
+            foreach (var skill in ProgressionModel.Skills) {
+                if (!HasSkill(skill.Id)) {
+                    AppendSkillEntry(builder, skill, false);
+                }
             }
 
             return builder.ToString().TrimEnd();
         }
 
+        private void AppendSkillEntry(StringBuilder builder, SkillInfo skill, bool unlocked) {
+            builder.AppendLine((unlocked ? "[ОТКРЫТ]" : "[ЗАКРЫТ]") + " " + skill.Name);
+            builder.AppendLine("Условие: " + GetSkillUnlockHint(skill));
+            builder.AppendLine("Эффект: " + skill.Description);
+            builder.AppendLine("Получено после " + skill.UnlockQuestLabel);
+            builder.AppendLine("Применение: " + skill.Usage);
+            builder.AppendLine();
+        }
+
         private string GetSkillUnlockHint(SkillInfo skill) {
+            if (HasSkill(skill.Id)) return "условие выполнено";
+
             var requiredBranch = skill.Branch == PlayerBuild.undecided || state.Build == skill.Branch;
             var requiredSkillMet = !skill.RequiredSkill.HasValue || HasSkill(skill.RequiredSkill.Value);
 
@@ -1262,6 +1314,7 @@ namespace RightOfBlood.Prototype {
         private string GetSkillBranchName(PlayerBuild build) {
             return build == PlayerBuild.undecided ? "общая" : GetBuildName(build);
         }
+        
         public void RunScalingCheckQuest() {
             UpdateAdvancedQuestAvailability();
             if (state.ScalingCheckQuestStatus == PrototypeQuestStatus.locked) {
@@ -1278,7 +1331,7 @@ namespace RightOfBlood.Prototype {
             state.ScalingCheckOutcome = result;
             state.ScalingCheckQuestStatus = PrototypeQuestStatus.completed;
             UpdateAdvancedQuestAvailability();
-            ShowMessage("Квест 3: скейлинг проверки", result);
+            ShowMessage("Скейлинг проверки", result);
         }
 
         public void RunProgressionBehaviorQuest() {
@@ -1313,37 +1366,63 @@ namespace RightOfBlood.Prototype {
             UpdateAdvancedQuestAvailability();
             return "Совет: " + state.CouncilReputation + "\n" +
                    "Мафия: " + state.MafiaReputation + "\n" +
-                   "Служебное влияние: " + state.OfficialInfluence + "\n" +
+                   "Служба: " + state.OfficialInfluence + "\n" +
                    "Текущая ветка: " + GetBuildName(state.Build) + "\n" +
-                   "Репутация ветки: " + GetCurrentBranchReputation() + "/" + GetNextReputationText();
-            //  + "\n" + "Угроза: " + state.ThreatLevel;
+                   "Репутация ветки: " + GetCurrentBranchReputation() + "/" + GetNextReputationText() + "\n" +
+                   "Угроза: " + state.ThreatLevel;
         }
 
         public string GetDebugFlagsPanelText() {
             UpdateAdvancedQuestAvailability();
-            return "IntroQuestStarted: " + state.IntroQuestStarted + "\n" +
-                   "DocumentFound: " + state.DocumentFound + "\n" +
-                   "CouncilHasCopy: " + state.CouncilHasCopy + "\n" +
-                   "MafiaHasCopy: " + state.MafiaHasCopy + "\n" +
-                   "BloodKnowledgeUnlocked: " + state.BloodKnowledgeUnlocked + "\n" +
-                   "SecretLibraryAccess: " + state.SecretLibraryAccess + "\n" +
-                   "BloodMagicAdvancedUnlocked: " + state.BloodMagicAdvancedUnlocked + "\n" +
-                   "CriminalWorldAccess: " + state.CriminalWorldAccess + "\n" +
-                   "Build: " + state.Build + "\n" +
-                   "Level: " + state.Level + "\n" +
-                   "Quest3: " + state.ScalingCheckQuestStatus + "\n" +
-                   "Quest4: " + state.ProgressionBehaviorQuestStatus + "\n" +
-                   "Quest5: " + state.BuildApproachQuestStatus;
+            var builder = new StringBuilder();
+            builder.AppendLine("IntroQuestStarted: " + state.IntroQuestStarted);
+            builder.AppendLine("DocumentFound: " + state.DocumentFound);
+            builder.AppendLine("CouncilHasCopy: " + state.CouncilHasCopy);
+            builder.AppendLine("MafiaHasCopy: " + state.MafiaHasCopy);
+            builder.AppendLine("BloodKnowledgeUnlocked: " + state.BloodKnowledgeUnlocked);
+            builder.AppendLine("SecretLibraryAccess: " + state.SecretLibraryAccess);
+            builder.AppendLine("BloodMagicAdvancedUnlocked: " + state.BloodMagicAdvancedUnlocked);
+            builder.AppendLine("CriminalWorldAccess: " + state.CriminalWorldAccess);
+            builder.AppendLine("Build: " + state.Build);
+            builder.AppendLine("Level: " + state.Level);
+            builder.AppendLine("Quest3: " + state.ScalingCheckQuestStatus);
+            builder.AppendLine("Quest4: " + state.ProgressionBehaviorQuestStatus);
+            builder.AppendLine("Quest5: " + state.BuildApproachQuestStatus);
+            builder.AppendLine();
+            builder.AppendLine(balanceHandler == null ? "Balance: unavailable" : balanceHandler.GetDebugText());
+            return builder.ToString().TrimEnd();
         }
 
         public string GetQuestPanelText() {
             UpdateAdvancedQuestAvailability();
-            return "Цель: " + GetObjectiveText() + "\n\n" +
-                   "1. Пропажа документа: " + (state.Stage == QuestStage.completed ? "завершён" : "активен") + "\n" +
-                   "2. Квест Совета: " + state.CouncilQuestStage + "\n" +
-                   "3. Скейлинг проверки: " + FormatQuestStatus(state.ScalingCheckQuestStatus, GetScalingCheckUnlockHint()) + "\n" +
-                   "4. Прогрессия меняет поведение: " + FormatQuestStatus(state.ProgressionBehaviorQuestStatus, GetProgressionBehaviorUnlockHint()) + "\n" +
-                   "5. Разные билды действуют по-разному: " + FormatQuestStatus(state.BuildApproachQuestStatus, GetBuildApproachUnlockHint());
+            var builder = new StringBuilder();
+            builder.AppendLine("Цель: " + GetObjectiveText());
+            builder.AppendLine();
+            builder.AppendLine("1. Пропажа документа: " + (state.Stage == QuestStage.completed ? "завершён" : "активен"));
+            builder.AppendLine("2. Квест Совета: " + state.CouncilQuestStage);
+            builder.AppendLine("3. Скейлинг проверки: " + FormatQuestStatus(state.ScalingCheckQuestStatus, GetScalingCheckUnlockHint()));
+            builder.AppendLine("4. Прогрессия меняет поведение: " + FormatQuestStatus(state.ProgressionBehaviorQuestStatus, GetProgressionBehaviorUnlockHint()));
+            builder.AppendLine("5. Разные билды действуют по-разному: " + FormatQuestStatus(state.BuildApproachQuestStatus, GetBuildApproachUnlockHint()));
+            builder.AppendLine();
+            builder.AppendLine(GetCurrentQuestRewardPreviewText());
+            return builder.ToString().TrimEnd();
+        }
+
+        private string GetCurrentQuestRewardPreviewText() {
+            var coefficient = Mathf.Max(1, state.Level);
+            if (state.Build == PlayerBuild.sage) {
+                return balanceHandler.BuildQuestRewardPreview("Результат решения:", coefficient, 2, 12, -3, 10, "Репутация Совета");
+            }
+
+            if (state.Build == PlayerBuild.rogue) {
+                return balanceHandler.BuildQuestRewardPreview("Результат решения:", coefficient, 2, -3, 12, 10, "Репутация мафии");
+            }
+
+            if (state.Build == PlayerBuild.magistrate) {
+                return balanceHandler.BuildQuestRewardPreview("Результат решения:", coefficient, 12, 2, -3, 10, "Репутация Магистрата");
+            }
+
+            return balanceHandler.BuildQuestRewardPreview("Результат решения:", coefficient, 5, 5, 5, 5, "Репутация стороны");
         }
 
         private void UpdateAdvancedQuestAvailability() {
@@ -1387,61 +1466,61 @@ namespace RightOfBlood.Prototype {
 
         private string ResolveScalingCheckResult() {
             if (state.Level >= 3 && (state.Build == PlayerBuild.magistrate || state.Build == PlayerBuild.sage || state.AncientBloodMandateUnlocked)) {
-                state.ThreatLevel += 1;
+                ApplyThreatDelta(1, "Проверка масштаба: уровень 3");
                 return "Уровень 3: закрытое крыло архива открывается без проверки. Цена - агенты мафии начинают слежку, угроза +1.";
             }
 
             if (state.Level >= 2 || state.ArchiveProcedureUnlocked || state.CouncilCipherUnlocked) {
-                state.OfficialInfluence = Math.Max(0, state.OfficialInfluence - 1);
-                state.CouncilReputation += 1;
+                ApplyInfluenceDelta(-1, "Проверка масштаба: уровень 2");
+                ApplyKnowledgeDelta(1, "Проверка масштаба: уровень 2");
                 return "Уровень 2: проверка знания архива средней сложности. Вы получаете доступ к одному делу, но начальник замечает обход регламента: служебное влияние -1, Совет +1.";
             }
 
             if (state.Build == PlayerBuild.rogue || state.ShadowEntryUnlocked) {
-                state.ThreatLevel += 1;
-                state.MafiaReputation += 1;
+                ApplyThreatDelta(1, "Проверка масштаба: новичок");
+                ApplyStrengthDelta(1, "Проверка масштаба: новичок");
                 return "Новобранец: проверка слишком сложная, но теневой вход помогает украсть часть сведений. Мафия +1, угроза +1.";
             }
 
-            state.OfficialInfluence = Math.Max(0, state.OfficialInfluence - 1);
+            ApplyInfluenceDelta(-1, "Проверка масштаба: провал архивариуса");
             return "Архивариус: проверка высокой сложности провалена. Охрана вызывает начальника, служебное влияние -1.";
         }
 
         private string ResolveProgressionBehaviorResult() {
             if (IsCouncilMemberStage()) {
-                state.CouncilReputation += 1;
+                ApplyKnowledgeDelta(1, "Поведение прогрессии: советник");
                 return "Член Совета приходит к закрытой библиотеке. Охрана открывает дверь сама, а библиотекарь отвечает на вопрос о древнем существе. Совет +1.";
             }
 
             if (IsCityManagerStage()) {
-                state.OfficialInfluence += 1;
+                ApplyInfluenceDelta(1, "Поведение прогрессии: город");
                 return "Управляющий городом требует принести книгу в кабинет и может привести стражу. Сцена проходит без уговоров, служебное влияние +1.";
             }
 
-            state.ThreatLevel += 1;
+            ApplyThreatDelta(1, "Поведение прогрессии: отказ");
             return "Архивариуса у входа останавливает охрана. Приходится уговаривать и искать обход, сцена завершается без доступа, угроза +1.";
         }
 
         private string ResolveBuildApproachResult() {
             if (state.Build == PlayerBuild.magistrate) {
-                state.OfficialInfluence += 1;
-                state.MafiaReputation -= 1;
+                ApplyInfluenceDelta(1, "Эпидемия и контрабанда: магистрат");
+                ApplyStrengthDelta(-1, "Эпидемия и контрабанда: магистрат");
                 return "Эпидемия и контрабанда: Магистрат вводит карантин и отправляет грузы на официальный досмотр. Решение медленное, но законное: служебное влияние +1, мафия -1.";
             }
 
             if (state.Build == PlayerBuild.sage) {
-                state.CouncilReputation += 1;
+                ApplyKnowledgeDelta(1, "Эпидемия и контрабанда: мудрец");
                 state.CriminalWorldAccess = true;
                 return "Эпидемия и контрабанда: Мудрец находит растение-противоядие и заключает сделку ради доступа к складу. Совет +1, открыт криминальный маршрут.";
             }
 
             if (state.Build == PlayerBuild.rogue) {
-                state.MafiaReputation += 2;
-                state.ThreatLevel += 1;
+            ApplyStrengthDelta(2, "Эпидемия и контрабанда: нападение на склад");
+            ApplyThreatDelta(1, "Эпидемия и контрабанда: нападение на склад");
                 return "Эпидемия и контрабанда: Разбойник устраивает налёт, сжигает товар и пугает банду. Быстро и эффективно: мафия +2, угроза +1.";
             }
 
-            state.ThreatLevel += 1;
+            ApplyThreatDelta(1, "Эпидемия и контрабанда: затягивание");
             return "Без выбранного билда проблему удаётся только отсрочить. Угроза +1.";
         }
 
@@ -1478,7 +1557,7 @@ namespace RightOfBlood.Prototype {
 
         private string GetObjectiveText() {
             UpdateAdvancedQuestAvailability();
-            if (state.ScalingCheckQuestStatus == PrototypeQuestStatus.active) return "Пройдите квест 3: проверку со скейлингом в закрытом крыле архива.";
+            if (state.ScalingCheckQuestStatus == PrototypeQuestStatus.active) return "Пройди проверку со скейлингом в закрытом крыле архива.";
             if (state.ProgressionBehaviorQuestStatus == PrototypeQuestStatus.active) return "Доступен квест 4: сцена у входа в библиотеку Совета.";
             if (state.BuildApproachQuestStatus == PrototypeQuestStatus.active) return "Доступен квест 5: проблема контрабанды и эпидемии.";
 
@@ -1590,3 +1669,9 @@ namespace RightOfBlood.Prototype {
         }
     }
 }
+
+
+
+
+
+
