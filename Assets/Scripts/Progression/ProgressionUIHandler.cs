@@ -28,6 +28,7 @@ namespace RightOfBlood.Prototype {
         }
 
         private void Update() {
+            if (GameConsole.IsInputBlocked) return;
             var keyboard = Keyboard.current;
             if (keyboard == null) return;
 
@@ -176,21 +177,30 @@ namespace RightOfBlood.Prototype {
 
         private void RefreshSkillsText() {
             var questGame = ResolveGame();
-            if (skillsText != null && questGame != null) skillsText.text = questGame.GetSkillsPanelText();
+            if (skillsText != null && questGame != null) SetText(skillsText, questGame.GetSkillsPanelText());
         }
         private void RefreshReputationText() {
             var questGame = ResolveGame();
-            if (reputationText != null && questGame != null) reputationText.text = questGame.GetReputationPanelText();
+            if (reputationText != null && questGame != null) SetText(reputationText, questGame.GetReputationPanelText());
         }
 
         private void RefreshFlagsText() {
             var questGame = ResolveGame();
-            if (flagsText != null && questGame != null) flagsText.text = questGame.GetDebugFlagsPanelText();
+            if (flagsText != null && questGame != null) SetText(flagsText, questGame.GetDebugFlagsPanelText());
         }
 
         private void RefreshQuestsText() {
             var questGame = ResolveGame();
-            if (questsText != null && questGame != null) questsText.text = questGame.GetQuestPanelText();
+            if (questsText != null && questGame != null) SetText(questsText, questGame.GetQuestPanelText());
+        }
+
+        private static void SetText(TMP_Text target, string value) {
+            if (target == null) return;
+            target.text = NormalizeText(value);
+        }
+
+        private static string NormalizeText(string value) {
+            return TextNormalizer.Normalize(value);
         }
 
         private void OpenOnly(GameObject panel) {

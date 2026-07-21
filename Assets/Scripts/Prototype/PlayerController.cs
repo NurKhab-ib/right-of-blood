@@ -3,13 +3,30 @@ using UnityEngine.InputSystem;
 
 namespace RightOfBlood.Prototype {
     public sealed class PlayerController : MonoBehaviour {
-        public float Speed = 4f;
+        public float Speed = 6f;
+        public float SprintMultiplier = 1.75f;
         public bool CanMove = true;
         public bool UseBounds = true;
         public Bounds MovementBounds;
 
+        private Rigidbody2D body;
+
+        private void Awake() {
+            body = GetComponent<Rigidbody2D>();
+            if (body == null) body = gameObject.AddComponent<Rigidbody2D>();
+            body.gravityScale = 0f;
+            body.freezeRotation = true;
+            body.interpolation = RigidbodyInterpolation2D.Interpolate;
+            var collider = GetComponent<CircleCollider2D>();
+            if (collider == null) collider = gameObject.AddComponent<CircleCollider2D>();
+            collider.radius = 0.35f;
+        }
+
         private void Update() {
-            if (!CanMove || Keyboard.current == null) return;
+            if (!CanMove || GameConsole.IsInputBlocked || Keyboard.current == null) {
+                if (body != null) body.linearVelocity = Vector2.zero;
+                return;
+            }
 
             var movement = Vector2.zero;
             var keyboard = Keyboard.current;
@@ -19,13 +36,14 @@ namespace RightOfBlood.Prototype {
             if (keyboard.wKey.isPressed || keyboard.upArrowKey.isPressed) movement.y += 1f;
             if (movement.sqrMagnitude > 1f) movement.Normalize();
 
-            var nextPosition = transform.position + (Vector3)(movement * Speed * Time.deltaTime);
+            var sprintMultiplier = keyboard.leftShiftKey.isPressed || keyboard.rightShiftKey.isPressed ? SprintMultiplier : 1f;
+            body.linearVelocity = movement * (Speed * sprintMultiplier);
             if (UseBounds && MovementBounds.size.sqrMagnitude > 0.01f) {
-                nextPosition.x = Mathf.Clamp(nextPosition.x, MovementBounds.min.x + 0.3f, MovementBounds.max.x - 0.3f);
-                nextPosition.y = Mathf.Clamp(nextPosition.y, MovementBounds.min.y + 0.4f, MovementBounds.max.y - 0.4f);
+                var position = body.position;
+                position.x = Mathf.Clamp(position.x, MovementBounds.min.x + 0.3f, MovementBounds.max.x - 0.3f);
+                position.y = Mathf.Clamp(position.y, MovementBounds.min.y + 0.4f, MovementBounds.max.y - 0.4f);
+                body.position = position;
             }
-
-            transform.position = nextPosition;
         }
     }
 }

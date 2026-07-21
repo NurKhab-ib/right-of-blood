@@ -5,7 +5,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 
 namespace RightOfBlood.Prototype {
-    public class QuestGame : MonoBehaviour {
+    public partial class QuestGame : MonoBehaviour {
         public const float DefaultInteractionRange = 1.2f;
         private const int RequiredOfficialInfluenceForCouncilLawPath = 2;
         private const int RequiredMafiaReputationForCouncilCriminalPath = -1;
@@ -87,13 +87,13 @@ namespace RightOfBlood.Prototype {
             if (questUi == null) questUi = FindFirstObjectByType<QuestUI>();
 
             if (player != null) {
-                player.CanMove = !dialogueOpen;
+                player.CanMove = !dialogueOpen && !IsTerminal && !GameConsole.IsInputBlocked;
                 RefreshWorldState();
                 UpdateInteractionPrompt();
             }
 
             var keyboard = Keyboard.current;
-            if (keyboard != null) {
+            if (!GameConsole.IsInputBlocked && keyboard != null) {
                 if (dialogueOpen) {
                     if (keyboard.digit1Key.wasPressedThisFrame || keyboard.numpad1Key.wasPressedThisFrame) Choose(0);
                     if (keyboard.digit2Key.wasPressedThisFrame || keyboard.numpad2Key.wasPressedThisFrame) Choose(1);
@@ -180,31 +180,13 @@ namespace RightOfBlood.Prototype {
         }
 
         private void RefreshWorldState() {
+            SyncWorldStateFlags();
+
             if (interactables.Count == 0) return;
 
             foreach (var interactable in interactables) {
                 if (interactable == null) continue;
-
-                switch (interactable.Kind) {
-                    case PrototypeInteractionKind.council_scholar:
-                        RouteCouncilScholar(interactable);
-                        break;
-                    case PrototypeInteractionKind.mafia_fixer:
-                        RouteMafiaFixer(interactable);
-                        break;
-                    case PrototypeInteractionKind.former_archivist:
-                        RouteFormerArchivist(interactable);
-                        break;
-                    case PrototypeInteractionKind.black_archive_door:
-                        interactable.SetVisible(true);
-                        break;
-                    case PrototypeInteractionKind.council_public_library:
-                        interactable.SetVisible(CanEnterCouncilLocation());
-                        break;
-                    case PrototypeInteractionKind.council_secret_library:
-                        interactable.SetVisible(CanShowSecretLibraryEntrance());
-                        break;
-                }
+                ApplyWorldStateToInteractable(interactable);
             }
         }
 
@@ -342,6 +324,7 @@ namespace RightOfBlood.Prototype {
                    interactable.name == "Department";
         }
         public void Interact(Interactable interactable) {
+            if (IsTerminal || GameConsole.IsInputBlocked) return;
             if (IsLegacyDepartmentEntrance(interactable)) {
                 LoadLocation(LocationId.office, "default");
                 return;
@@ -359,12 +342,75 @@ namespace RightOfBlood.Prototype {
                 case PrototypeInteractionKind.black_archive_door: TrySoloAccess(); break;
                 case PrototypeInteractionKind.council_public_library: VisitPublicLibrary(); break;
                 case PrototypeInteractionKind.council_secret_library: TrySecretLibraryAccess(); break;
+                case PrototypeInteractionKind.seal: UseServiceSeal(); break;
+                case PrototypeInteractionKind.notice_board: ShowMessage("Доска объявлений", GetWorldStateSummaryText()); break;
+                case PrototypeInteractionKind.card_index: UseCardIndex(); break;
+                case PrototypeInteractionKind.cache: UseCache(); break;
+                case PrototypeInteractionKind.contraband_container: UseContrabandContainer(); break;
+                case PrototypeInteractionKind.sealed_passage:
+                case PrototypeInteractionKind.reinforced_door: TryTravel(interactable); break;
+                case PrototypeInteractionKind.street_patrol: TalkToStreetPresence(false); break;
+                case PrototypeInteractionKind.street_raid: TalkToStreetPresence(true); break;
+                case PrototypeInteractionKind.guard_post: TalkToArchiveSecurity(); break;
+                case PrototypeInteractionKind.blackmail_point: UseBlackmailPoint(); break;
                 case PrototypeInteractionKind.door:
                     TryTravel(interactable); break;
                 default: throw new ArgumentOutOfRangeException();
             }
         }
 
+        private void UseServiceSeal() {
+            if (state.OfficialInfluence <= 0) {
+                ShowMessage("Служебная печать", "Без влияния магистрата печать не даёт доступа.");
+                return;
+            }
+            if (!state.CanEnterRestrictedArchive) ApplyInfluenceDelta(1, "Служебная печать: подтверждение полномочий");
+            state.OfficialAttemptBlocked = false;
+            state.CanEnterRestrictedArchive = true;
+            ShowMessage("Служебная печать", "Печать подтверждает полномочия. Официальный проход в архив открыт.");
+        }
+
+        private void UseCardIndex() {
+            if (!CanEnterCouncilLocation()) {
+                ShowMessage("Картотека", "Картотека Совета закрыта для посторонних.");
+                return;
+            }
+            ApplyKnowledgeDelta(1, "Картотека Совета");
+            state.BlackArchiveEntranceKnown = true;
+            ShowMessage("Картотека", "В карточках найдено упоминание чёрного хода и поставщика заражённых лекарств.");
+        }
+
+        private void UseCache() {
+            if (!CanEnterDarkStreets()) {
+                ShowMessage("Тайник", "Тайник отмечен знаком Мафии. Без проводника лучше не трогать его.");
+                return;
+            }
+
+            if (CanOfferMafiaFinale()) {
+                OfferMafiaFinale();
+                return;
+            }
+
+            state.CriminalWorldAccess = true;
+            ApplyStrengthDelta(1, "Тайник Мафии");
+            ShowMessage("Тайник", "Ты вскрываешь тайник и получаешь рычаг давления на улицах.");
+        }
+
+        private void UseContrabandContainer() {
+            if (state.ThreatLevel < 3) ApplyThreatDelta(1, "Контейнер контрабанды");
+            state.EpidemicLeadLearned = true;
+            ShowMessage("Контейнер контрабанды", "Контейнер связывает болезнь в нижнем квартале с чёрным складом.");
+        }
+
+        private void UseBlackmailPoint() {
+            if (!state.CouncilBlackmailLeverage) {
+                state.CouncilBlackmailLeverage = true;
+                state.CouncilQuestStage = CouncilQuestStage.return_to_council;
+                ShowMessage("Точка шантажа", "Ты находишь доказательства старой сделки Совета с мафией.");
+                return;
+            }
+            ShowMessage("Точка шантажа", "Доказательства уже у тебя. Реши, кому и когда их показать.");
+        }
         private void InspectDesk() {
             if (state.Stage != QuestStage.inspect_missing_document) {
                 ShowMessage("Стол", "На месте пропавшей бумаги остался лишь пустой след. Протрите с него пыль, что ли..");
@@ -386,7 +432,7 @@ namespace RightOfBlood.Prototype {
             }
 
             if (state.Stage == QuestStage.completed) {
-                ShowPostQuestHub("Department chief");
+                ShowPostQuestHub("\u041d\u0430\u0447\u0430\u043b\u044c\u043d\u0438\u043a \u043e\u0442\u0434\u0435\u043b\u0430");
                 return;
             }
 
@@ -408,7 +454,7 @@ namespace RightOfBlood.Prototype {
                         state.IgnoredFirstHook = true;
                         state.Stage = QuestStage.choose_archive_access;
                         ApplyThreatDelta(1, "Начальник отдела: проигнорировать расследование");
-                        ShowMessage("X days later..",
+                        ShowMessage("Несколько дней спустя",
                             "Магистрат всячески игнорирует пропажу, но след документа всплывает снова. Теперь промедление выглядит опаснее.");
                     })
                 });
@@ -564,15 +610,179 @@ namespace RightOfBlood.Prototype {
                 "В открытом зале остаются городские хроники, медицинские сводки и каталоги. Тайные полки видны за охраняемой дверью.");
         }
 
+        private bool CanOfferMafiaFinale() {
+            return state.Build == PlayerBuild.rogue &&
+                   state.Level >= 3 &&
+                   state.AncientBloodMandateUnlocked &&
+                   CanUnlockAncientBloodMandate();
+        }
+
+        private void OfferMafiaFinale() {
+            if (state.MafiaFinaleQuestStatus == PrototypeQuestStatus.completed) {
+                ShowMessage("Конец: Власть улиц", GetMafiaFinaleOutcome());
+                return;
+            }
+
+            state.MafiaFinaleQuestStatus = PrototypeQuestStatus.active;
+            ShowDialogue("Власть улиц",
+                "В тайнике лежат списки долгов, маршруты рейдов и имена тех, кто готов продать город. Теперь улицы ждут твоего решения.",
+                new[] {
+                    new DialogueChoice("Забрать город силой", () => ResolveMafiaFinale(FinaleChoice.mafia_rule)),
+                    new DialogueChoice("Заключить мир кварталов", () => ResolveMafiaFinale(FinaleChoice.mafia_truce)),
+                    new DialogueChoice("Исчезнуть с архивом", () => ResolveMafiaFinale(FinaleChoice.mafia_escape))
+                });
+        }
+
+        private void ResolveMafiaFinale(FinaleChoice choice) {
+            state.FinaleChoice = choice;
+            state.MafiaFinaleQuestStatus = PrototypeQuestStatus.completed;
+            switch (choice) {
+                case FinaleChoice.mafia_rule:
+                    ApplyStrengthDelta(2, "Финал Мафии: власть силой");
+                    ApplyThreatDelta(2, "Финал Мафии: власть силой");
+                    break;
+                case FinaleChoice.mafia_truce:
+                    ApplyKnowledgeDelta(1, "Финал Мафии: мир кварталов");
+                    ApplyThreatDelta(-1, "Финал Мафии: мир кварталов");
+                    break;
+                case FinaleChoice.mafia_escape:
+                    ApplyStrengthDelta(-1, "Финал Мафии: исчезновение");
+                    ApplyThreatDelta(-2, "Финал Мафии: исчезновение");
+                    break;
+            }
+            CompleteEnding(OutcomeFor(choice), "Конец: Власть улиц", GetMafiaFinaleOutcome());
+        }
+        private string GetMafiaFinaleOutcome() {
+            switch (state.FinaleChoice) {
+                case FinaleChoice.mafia_rule:
+                    return "Ты собрал долги в один кулак и взял город силой. Порядок на улицах теперь держится на страхе, а твоё имя стало законом нижних кварталов.";
+                case FinaleChoice.mafia_truce:
+                    return "Ты продал компромат всем сторонам и заставил кварталы договориться. Улицы остаются опасными, но у города впервые появился мир без приказа сверху.";
+                case FinaleChoice.mafia_escape:
+                    return "Ты исчез с архивом и оставил город без хозяина. Рейды стихли, долги обнулились, но никто не знает, когда ты вернёшься за своим.";
+                default:
+                    return "Тайник ждёт твоего решения.";
+            }
+        }
+
+        private void TalkToStreetPresence(bool raid) {
+            if (raid) {
+                CheckRaidRisk();
+                if (IsTerminal || GameConsole.IsInputBlocked) return;
+                if (state.MafiaReputation >= 4) {
+                    ShowMessage("Рейд", "Старший рейда узнаёт тебя по уличным связям и велит своим людям не задерживать тебя. Но город помнит, кто провёл их через квартал.");
+                    return;
+                }
+
+                if (state.OfficialInfluence >= 3) {
+                    ShowMessage("Рейд", "Ты предъявляешь служебный знак. Командир рейда пропускает тебя, но просит не вмешиваться в облаву без приказа.");
+                    return;
+                }
+
+                if (state.CouncilReputation >= 3) {
+                    ShowMessage("Рейд", "Командир слышал о твоих связях с Советом. Он отступает на шаг и сухо предупреждает: сегодня знания не остановят обыск.");
+                    return;
+                }
+
+                ShowMessage("Рейд", "Круги рейда смыкаются на перекрёстке. Тебя пока не трогают, но каждый разговор здесь может стать причиной для обыска.");
+                return;
+            }
+
+            if (state.OfficialInfluence >= 2) {
+                ShowMessage("Патруль", "Патрульный узнаёт служебный знак и сообщает: город напряжён, но для тебя проход остаётся открытым.");
+                return;
+            }
+
+            if (state.MafiaReputation >= 2) {
+                ShowMessage("Патруль", "Патрульный долго смотрит на тебя, затем замечает знак улиц и отводит взгляд. Сегодня Мафия ещё может купить тишину.");
+                return;
+            }
+
+            if (state.CouncilReputation >= 2) {
+                ShowMessage("Патруль", "Патрульный вежливо просит не задерживаться. Имя Совета даёт тебе время, но не избавляет от внимания стражи.");
+                return;
+            }
+
+            ShowMessage("Патруль", state.Level >= 2
+                ? "Патрульный оценивает тебя как человека с делом и пропускает, предупредив: улицы больше не принадлежат случайным прохожим."
+                : "Патрульный требует идти дальше и не смотреть по сторонам. Пока у тебя нет имени, за тебя никто не поручится.");
+        }
+
         private void TrySecretLibraryAccess() {
             if (!CanShowSecretLibraryEntrance()) {
                 ShowMessage("Тайная библиотека", "За публичным залом есть закрытая дверь, но сейчас это просто стена запретов: нет допуска, статуса или зацепки.");
                 return;
             }
 
+            if (state.AncientBloodMandateUnlocked && CanUnlockAncientBloodMandate()) {
+                OfferFinale();
+                return;
+            }
+
             RunProgressionBehaviorQuest();
         }
 
+        private void OfferFinale() {
+            if (state.FinaleQuestStatus == PrototypeQuestStatus.completed) {
+                ShowMessage("Цена рода", GetFinaleOutcome());
+                return;
+            }
+
+            if (!CanUnlockAncientBloodMandate()) {
+                ShowMessage("Право крови ещё не заслужено", GetMandateRequirementText());
+                return;
+            }
+
+            state.FinaleQuestStatus = PrototypeQuestStatus.active;
+            ShowDialogue("Цена рода",
+                "В закрытом хранилище лежит ритуал, способный изменить город. Право крови даёт тебе право выбрать, но не отменяет цену.",
+                new[] {
+                    new DialogueChoice("Призвать Существо", () => ResolveFinale(FinaleChoice.summon)),
+                    new DialogueChoice("Запечатать хранилище", () => ResolveFinale(FinaleChoice.seal)),
+                    new DialogueChoice("Передать ритуал Совету", () => ResolveFinale(FinaleChoice.council)),
+                    new DialogueChoice("Передать ритуал Мафии", () => ResolveFinale(FinaleChoice.mafia)),
+                    new DialogueChoice("Открыть правду городу", () => ResolveFinale(FinaleChoice.reveal))
+                });
+        }
+
+        private void ResolveFinale(FinaleChoice choice) {
+            state.FinaleChoice = choice;
+            state.FinaleQuestStatus = PrototypeQuestStatus.completed;
+            switch (choice) {
+                case FinaleChoice.summon:
+                    state.AncientBloodMandateUnlocked = false;
+                    ApplyThreatDelta(-3, "Финал: призыв Существа");
+                    break;
+                case FinaleChoice.seal:
+                    ApplyInfluenceDelta(1, "Финал: хранилище запечатано");
+                    ApplyThreatDelta(-1, "Финал: хранилище запечатано");
+                    break;
+                case FinaleChoice.council:
+                    ApplyKnowledgeDelta(2, "Финал: ритуал передан Совету");
+                    ApplyThreatDelta(-1, "Финал: порядок Совета");
+                    break;
+                case FinaleChoice.mafia:
+                    ApplyStrengthDelta(3, "Финал: ритуал передан Мафии");
+                    ApplyThreatDelta(2, "Финал: теневой контроль");
+                    break;
+                case FinaleChoice.reveal:
+                    ApplyInfluenceDelta(-1, "Финал: открытая правда");
+                    ApplyThreatDelta(1, "Финал: открытая правда");
+                    break;
+            }
+            CompleteEnding(OutcomeFor(choice), "Конец: Цена рода", GetFinaleOutcome());
+        }
+
+        private string GetFinaleOutcome() {
+            switch (state.FinaleChoice) {
+                case FinaleChoice.summon: return "Ты призвал Существо и остановил распад города. Улицы вновь спокойны, но право крови исчерпано: город спасён ценой дара.";
+                case FinaleChoice.seal: return "Ты запечатал хранилище и отказался от чужой воли. Кризис не исчезает мгновенно, но город получает шанс изменить будущее сам.";
+                case FinaleChoice.council: return "Ты передал ритуал Совету. Порядок восстановлен, знания сохранены, но право решать остаётся у закрытого круга.";
+                case FinaleChoice.mafia: return "Ты передал ритуал Мафии. Город выжил под быстрым и жестоким контролем улиц.";
+                case FinaleChoice.reveal: return "Ты открыл правду городу. Старый порядок расколот, но право крови больше не тайна немногих.";
+                default: return "Хранилище ждёт решения.";
+            }
+        }
         private void OfferEpidemicQuest() {
             UpdateAdvancedQuestAvailability();
 
@@ -619,6 +829,8 @@ namespace RightOfBlood.Prototype {
         private void CompleteBuildApproachQuest(string result) {
             state.BuildApproachOutcome = result;
             state.BuildApproachQuestStatus = PrototypeQuestStatus.completed;
+            RefreshProgressionFromReputation();
+            UpdateAdvancedQuestAvailability();
             ShowMessage("Квест 5: эпидемия и контрабанда", result);
         }
 
@@ -626,18 +838,21 @@ namespace RightOfBlood.Prototype {
             ApplyInfluenceDelta(1, "Квест Совета: законный путь");
             ApplyStrengthDelta(-1, "Квест Совета: законный путь");
             state.OtherDistrictSafety -= 1;
+            state.QuarantineRouteOpen = true;
             return "Магистрат вводит карантин, ставит досмотр грузов и перекрывает поставку заражённых лекарств. Решение законное, но медленное: служебное влияние +1, мафия -1, безопасность других районов -1.";
         }
 
         private string ResolveSageEpidemicResult() {
             ApplyKnowledgeDelta(1, "Квест Совета: путь Совета");
             state.CriminalWorldAccess = true;
+            state.AntidoteDistributed = true;
             return "Мудрец сверяет симптомы с хрониками публичной библиотеки и находит растение-противоядие. Сделка с перевозчиком открывает путь к складу: Совет +1, открыт криминальный маршрут.";
         }
 
         private string ResolveRogueEpidemicResult() {
             ApplyStrengthDelta(2, "Квест Совета: криминальный путь");
             ApplyThreatDelta(1, "Квест Совета: криминальный путь");
+            state.BlackWarehouseDestroyed = true;
             return "Разбойник выходит на чёрный склад, сжигает товар и заставляет банду отступить. Быстро и грязно: мафия +2, угроза +1.";
         }
 
@@ -833,7 +1048,7 @@ namespace RightOfBlood.Prototype {
             state.CouncilDistrictSecured = true;
             ApplyKnowledgeDelta(2, "Квест Совета: законный выбор");
             ApplyStrengthDelta(-2, "Квест Совета: законный выбор");
-            ApplyInfluenceDelta(-1, "Квест Совета: законный выбор");
+            ApplyInfluenceDelta(1, "Квест Совета: законный выбор");
             state.OtherDistrictSafety -= 1;
             FinishCouncilQuest("Патрули защищают район Совета от преступников. Совет благодарен, мафия злится, а безопасность других улиц проседает.");
         }
@@ -856,6 +1071,8 @@ namespace RightOfBlood.Prototype {
             state.SecretLibraryAccess = true;
             state.BloodMagicAdvancedUnlocked = true;
             state.BloodKnowledgeUnlocked = true;
+            ApplyKnowledgeDelta(2, "Квест Совета: завершение дела");
+            RefreshProgressionFromReputation();
 
             ShowDialogue("Тайная библиотека", resolutionText + " Совет допускает вас к закрытым записям, и кровь отвечает новым знанием.",
                 new[] { new DialogueChoice("Завершить квест Совета", CloseDialogue) });
@@ -880,6 +1097,7 @@ namespace RightOfBlood.Prototype {
             state.ProgressionIntroSeen = true;
 
             if (build == PlayerBuild.sage) {
+                state.CouncilReputation = Math.Max(1, state.CouncilReputation);
                 SetMinimumKnowledge(1, "Выбор билда: Совет");
                 UnlockSkill(SkillId.public_library_access);
                 ApplyPublicLibraryAccess();
@@ -906,7 +1124,7 @@ namespace RightOfBlood.Prototype {
         private void ShowPostQuestHub(string speaker) {
             RefreshProgressionFromReputation();
             ShowDialogue(speaker,
-                "После вводного квеста используй дерево навыков для симуляции 1-ых уровней разных веток.\n" + GetProgressionSummary(),
+                "После вводного квеста открой дерево навыков: оно показывает требования следующих этапов.\n" + GetProgressionSummary(),
                 new[] {
                     new DialogueChoice("Дерево навыков", ShowProgressionTree),
                     new DialogueChoice("закрыть", CloseDialogue)
@@ -918,41 +1136,51 @@ namespace RightOfBlood.Prototype {
         }
 
         public void SimulateArchivistStage() {
-            SimulateProgressionStage(PlayerBuild.magistrate, 1);
+            ShowStageRequirement(PlayerBuild.magistrate, "Архивариус", 1);
         }
 
         public void SimulateArchiveManagerStage() {
-            SimulateProgressionStage(PlayerBuild.magistrate, 2);
+            ShowStageRequirement(PlayerBuild.magistrate, "Управляющий архивом", 2);
         }
 
         public void SimulateCityManagerStage() {
-            SimulateProgressionStage(PlayerBuild.magistrate, 3);
+            ShowStageRequirement(PlayerBuild.magistrate, "Управляющий городом", 3);
         }
 
         public void SimulateCouncilParishionerStage() {
-            SimulateProgressionStage(PlayerBuild.sage, 1);
+            ShowStageRequirement(PlayerBuild.sage, "Прихожанин", 1);
         }
 
         public void SimulateCouncilCandidateStage() {
-            SimulateProgressionStage(PlayerBuild.sage, 2);
+            ShowStageRequirement(PlayerBuild.sage, "Кандидат", 2);
         }
 
         public void SimulateCouncilMemberStage() {
-            SimulateProgressionStage(PlayerBuild.sage, 3);
+            ShowStageRequirement(PlayerBuild.sage, "Член Совета", 3);
         }
 
         public void SimulateRogueNewcomerStage() {
-            SimulateProgressionStage(PlayerBuild.rogue, 1);
+            ShowStageRequirement(PlayerBuild.rogue, "Новобранец", 1);
         }
 
         public void SimulateExperiencedRogueStage() {
-            SimulateProgressionStage(PlayerBuild.rogue, 2);
+            ShowStageRequirement(PlayerBuild.rogue, "Бывалый", 2);
         }
 
         public void SimulateGuildHeadStage() {
-            SimulateProgressionStage(PlayerBuild.rogue, 3);
+            ShowStageRequirement(PlayerBuild.rogue, "Глава гильдии", 3);
         }
 
+        private void ShowStageRequirement(PlayerBuild build, string stageName, int requiredLevel) {
+            var branchName = GetBuildName(build);
+            var requirement = requiredLevel == 1
+                ? "Выберите эту ветку и завершите вводное расследование."
+                : requiredLevel == 2
+                    ? "Завершите проверку закрытого крыла и закрепите путь во втором решении развития."
+                    : "Накопите 4 репутации в ветке, завершите проверку закрытого крыла и решите проблему эпидемии.";
+            ShowMessage(stageName + " - " + branchName,
+                "Это узел развития, а не бесплатное повышение. " + requirement);
+        }
         private void ShowProgressionTree() {
             RefreshProgressionFromReputation();
             CloseDialogue();
@@ -1008,7 +1236,6 @@ namespace RightOfBlood.Prototype {
                 ShowFactionSwitchOffer(GetProgressionSummary() + ", этап " + state.Level);
             }
             else {
-                // ShowMessage("Прогрессия обновлена", "Этап " + state.Level + ": " + GetBuildName(build) + ".\n" + GetProgressionSummary());
                 ShowMessage("Прогрессия обновлена", GetProgressionSummary() + ", этап " + state.Level);
             }
         }
@@ -1079,7 +1306,7 @@ namespace RightOfBlood.Prototype {
 
             var reputation = GetCurrentBranchReputation();
             var newLevel = 1;
-            if (reputation >= ProgressionModel.ReputationForThirdLevel) newLevel = 3;
+            if (CanReachThirdStage()) newLevel = 3;
             else if (reputation >= ProgressionModel.ReputationForSecondLevel && state.SecondDevelopmentChoiceMade) newLevel = 2;
             state.Level = Math.Max(state.Level, newLevel);
             ApplyLevelRewards();
@@ -1159,7 +1386,7 @@ namespace RightOfBlood.Prototype {
                 }
             }
 
-            if (state.Level >= 3 && state.BloodMagicAdvancedUnlocked) UnlockSkill(SkillId.ancient_blood_mandate);
+            if (CanUnlockAncientBloodMandate()) UnlockSkill(SkillId.ancient_blood_mandate);
         }
 
         private void UnlockSkill(SkillId skill) {
@@ -1222,8 +1449,8 @@ namespace RightOfBlood.Prototype {
 
         private string BuildProgressionTreeText() {
             return "Магистрат: Архивариус - Управляющий архивом - Управляющий городом\n" +
-                   "Мудрец: Прихожанин Совета - Кандидат в Совет - Член Совета\n" +
-                   "Разбойник: Новобранец - Бывалый - Глава гильдии";
+                   "Совет: Прихожанин - Кандидат - Член Совета\n" +
+                   "Мафия: Новобранец - Бывалый - Глава";
         }
 
         private string GetBuildSummary(PlayerBuild build) {
@@ -1235,19 +1462,17 @@ namespace RightOfBlood.Prototype {
         }
 
         private string GetProgressionSummary() {
-            // return "Этап " + state.Level + ", билд: " + GetBuildName(state.Build) +
-            //        ", репутация " + GetCurrentBranchReputation() + "/" + GetNextReputationText() + ".";
             return GetBuildName(state.Build);
         }
 
         private string GetNextReputationText() {
-            if (state.Level >= 3) return "max";
+            if (state.Level >= 3) return "максимум";
             return ProgressionModel.GetRequiredReputation(state.Level + 1).ToString();
         }
 
         private string GetBuildName(PlayerBuild build) {
             var info = ProgressionModel.GetBuild(build);
-            return info == null ? "none" : info.Name;
+            return info == null ? "не выбран" : info.Name;
         }
 
         private string GetUnlockedSkillsText() {
@@ -1256,7 +1481,7 @@ namespace RightOfBlood.Prototype {
                 if (HasSkill(skill.Id)) names.Add(skill.Name);
             }
 
-            return names.Count == 0 ? "none" : string.Join(", ", names);
+            return names.Count == 0 ? "нет" : string.Join(", ", names);
         }
 
         public string GetSkillsPanelText() {
@@ -1315,6 +1540,86 @@ namespace RightOfBlood.Prototype {
             return build == PlayerBuild.undecided ? "общая" : GetBuildName(build);
         }
         
+        public string RunConsoleQuest(string questName) {
+            var key = NormalizeConsoleKey(questName);
+            switch (key) {
+                case "1_document":
+                case "1_документ":
+                case "документ":
+                case "квест 1":
+                case "quest 1":
+                    if (state.Stage == QuestStage.inspect_missing_document) InspectDesk();
+                    else if (state.Stage == QuestStage.talk_to_chief) TalkToChief();
+                    else if (state.Stage == QuestStage.find_document_in_archive) InspectArchiveShelf();
+                    else ShowMessage("Квест 1", "Пропажа документа уже завершена.");
+                    return "Запущен квест 1: пропажа документа.";
+                case "2_council":
+                case "2_совет":
+                case "совет":
+                case "квест 2":
+                case "quest 2":
+                    TalkToCouncilProblem();
+                    return "Запущен квест 2: проблема Совета.";
+                case "3_scaling":
+                case "3_скейлинг":
+                case "скейлинг":
+                case "проверка":
+                case "квест 3":
+                case "quest 3":
+                    RunScalingCheckQuest();
+                    return "Запущен квест 3: скейлинг проверки.";
+                case "4_progression":
+                case "4_прогрессия":
+                case "прогрессия":
+                case "поведение":
+                case "квест 4":
+                case "quest 4":
+                    RunProgressionBehaviorQuest();
+                    return "Запущен квест 4: поведение прогрессии.";
+                case "5_epidemic":
+                case "5_эпидемия":
+                case "эпидемия":
+                case "контрабанда":
+                case "квест 5":
+                case "quest 5":
+                    RunBuildApproachQuest();
+                    return "Запущен квест 5: эпидемия и контрабанда.";
+                case "6_final":
+                case "6_финал":
+                case "финал":
+                case "право крови":
+                    OfferFinale();
+                    return "Открыт финальный выбор права крови.";
+                default:
+                    return "Неизвестный квест. Используйте 1_document, 2_council, 3_scaling, 4_progression, 5_epidemic или 6_final.";
+            }
+        }
+
+        public string RunConsoleStage(string stageName) {
+            var key = NormalizeConsoleKey(stageName);
+            switch (key) {
+                case "magistrate_1": return ApplyConsoleStage(PlayerBuild.magistrate, 1, "Архивариус");
+                case "magistrate_2": return ApplyConsoleStage(PlayerBuild.magistrate, 2, "Управляющий архивом");
+                case "magistrate_3": return ApplyConsoleStage(PlayerBuild.magistrate, 3, "Управляющий городом");
+                case "council_1": return ApplyConsoleStage(PlayerBuild.sage, 1, "Прихожанин");
+                case "council_2": return ApplyConsoleStage(PlayerBuild.sage, 2, "Кандидат в Совет");
+                case "council_3": return ApplyConsoleStage(PlayerBuild.sage, 3, "Член Совета");
+                case "mafia_1": return ApplyConsoleStage(PlayerBuild.rogue, 1, "Новобранец");
+                case "mafia_2": return ApplyConsoleStage(PlayerBuild.rogue, 2, "Бывалый разбойник");
+                case "mafia_3": return ApplyConsoleStage(PlayerBuild.rogue, 3, "Глава гильдии");
+                default:
+                    return "Неизвестный этап. Используйте magistrate_1..3, council_1..3 или mafia_1..3.";
+            }
+        }
+
+        private string ApplyConsoleStage(PlayerBuild build, int targetLevel, string stageName) {
+            SimulateProgressionStage(build, targetLevel);
+            return "Отладка: установлен этап «" + stageName + "» (" + GetBuildName(build) + ").";
+        }
+        private static string NormalizeConsoleKey(string value) {
+            return string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim().ToLowerInvariant();
+        }
+
         public void RunScalingCheckQuest() {
             UpdateAdvancedQuestAvailability();
             if (state.ScalingCheckQuestStatus == PrototypeQuestStatus.locked) {
@@ -1331,6 +1636,10 @@ namespace RightOfBlood.Prototype {
             state.ScalingCheckOutcome = result;
             state.ScalingCheckQuestStatus = PrototypeQuestStatus.completed;
             UpdateAdvancedQuestAvailability();
+            if (!state.SecondDevelopmentChoiceMade) {
+                OfferSecondDevelopmentChoice();
+                return;
+            }
             ShowMessage("Скейлинг проверки", result);
         }
 
@@ -1375,21 +1684,21 @@ namespace RightOfBlood.Prototype {
         public string GetDebugFlagsPanelText() {
             UpdateAdvancedQuestAvailability();
             var builder = new StringBuilder();
-            builder.AppendLine("IntroQuestStarted: " + state.IntroQuestStarted);
-            builder.AppendLine("DocumentFound: " + state.DocumentFound);
-            builder.AppendLine("CouncilHasCopy: " + state.CouncilHasCopy);
-            builder.AppendLine("MafiaHasCopy: " + state.MafiaHasCopy);
-            builder.AppendLine("BloodKnowledgeUnlocked: " + state.BloodKnowledgeUnlocked);
-            builder.AppendLine("SecretLibraryAccess: " + state.SecretLibraryAccess);
-            builder.AppendLine("BloodMagicAdvancedUnlocked: " + state.BloodMagicAdvancedUnlocked);
-            builder.AppendLine("CriminalWorldAccess: " + state.CriminalWorldAccess);
-            builder.AppendLine("Build: " + state.Build);
-            builder.AppendLine("Level: " + state.Level);
-            builder.AppendLine("Quest3: " + state.ScalingCheckQuestStatus);
-            builder.AppendLine("Quest4: " + state.ProgressionBehaviorQuestStatus);
-            builder.AppendLine("Quest5: " + state.BuildApproachQuestStatus);
+            builder.AppendLine("Вводный квест начат: " + state.IntroQuestStarted);
+            builder.AppendLine("Документ найден: " + state.DocumentFound);
+            builder.AppendLine("Копия у Совета: " + state.CouncilHasCopy);
+            builder.AppendLine("Копия у Мафии: " + state.MafiaHasCopy);
+            builder.AppendLine("Знание крови открыто: " + state.BloodKnowledgeUnlocked);
+            builder.AppendLine("Доступ к тайной библиотеке: " + state.SecretLibraryAccess);
+            builder.AppendLine("Продвинутая магия крови: " + state.BloodMagicAdvancedUnlocked);
+            builder.AppendLine("Доступ к криминальному миру: " + state.CriminalWorldAccess);
+            builder.AppendLine("Путь: " + state.Build);
+            builder.AppendLine("Этап: " + state.Level);
+            builder.AppendLine("Квест 3: " + state.ScalingCheckQuestStatus);
+            builder.AppendLine("Квест 4: " + state.ProgressionBehaviorQuestStatus);
+            builder.AppendLine("Квест 5: " + state.BuildApproachQuestStatus);
             builder.AppendLine();
-            builder.AppendLine(balanceHandler == null ? "Balance: unavailable" : balanceHandler.GetDebugText());
+            builder.AppendLine(balanceHandler == null ? "Баланс: недоступен" : balanceHandler.GetDebugText());
             return builder.ToString().TrimEnd();
         }
 
@@ -1403,6 +1712,8 @@ namespace RightOfBlood.Prototype {
             builder.AppendLine("3. Скейлинг проверки: " + FormatQuestStatus(state.ScalingCheckQuestStatus, GetScalingCheckUnlockHint()));
             builder.AppendLine("4. Прогрессия меняет поведение: " + FormatQuestStatus(state.ProgressionBehaviorQuestStatus, GetProgressionBehaviorUnlockHint()));
             builder.AppendLine("5. Разные билды действуют по-разному: " + FormatQuestStatus(state.BuildApproachQuestStatus, GetBuildApproachUnlockHint()));
+            builder.AppendLine("6. Цена рода: " + FormatQuestStatus(state.FinaleQuestStatus, "открой навык Право крови"));
+            builder.AppendLine("7. Власть улиц: " + FormatQuestStatus(state.MafiaFinaleQuestStatus, "стань главой Мафии и заверши квест 5"));
             builder.AppendLine();
             builder.AppendLine(GetCurrentQuestRewardPreviewText());
             return builder.ToString().TrimEnd();
@@ -1426,6 +1737,12 @@ namespace RightOfBlood.Prototype {
         }
 
         private void UpdateAdvancedQuestAvailability() {
+            if (state.FinaleQuestStatus == PrototypeQuestStatus.locked && CanUnlockAncientBloodMandate()) {
+                state.FinaleQuestStatus = PrototypeQuestStatus.active;
+            }
+            if (state.MafiaFinaleQuestStatus == PrototypeQuestStatus.locked && CanOfferMafiaFinale()) {
+                state.MafiaFinaleQuestStatus = PrototypeQuestStatus.active;
+            }
             if (state.ScalingCheckQuestStatus == PrototypeQuestStatus.locked && CanUnlockScalingCheckQuest()) {
                 state.ScalingCheckQuestStatus = PrototypeQuestStatus.active;
             }
@@ -1467,23 +1784,33 @@ namespace RightOfBlood.Prototype {
         private string ResolveScalingCheckResult() {
             if (state.Level >= 3 && (state.Build == PlayerBuild.magistrate || state.Build == PlayerBuild.sage || state.AncientBloodMandateUnlocked)) {
                 ApplyThreatDelta(1, "Проверка масштаба: уровень 3");
+                state.ArchiveWingOpen = true;
+                state.GuardHostile = true;
                 return "Уровень 3: закрытое крыло архива открывается без проверки. Цена - агенты мафии начинают слежку, угроза +1.";
             }
 
             if (state.Level >= 2 || state.ArchiveProcedureUnlocked || state.CouncilCipherUnlocked) {
-                ApplyInfluenceDelta(-1, "Проверка масштаба: уровень 2");
+                if (state.Build == PlayerBuild.magistrate) ApplyInfluenceDelta(1, "Проверка масштаба: служебный регламент");
+                else ApplyInfluenceDelta(-1, "Проверка масштаба: уровень 2");
                 ApplyKnowledgeDelta(1, "Проверка масштаба: уровень 2");
-                return "Уровень 2: проверка знания архива средней сложности. Вы получаете доступ к одному делу, но начальник замечает обход регламента: служебное влияние -1, Совет +1.";
+                state.ArchiveWingOpen = true;
+                return "Уровень 2: проверка знания архива средней сложности. Вы получаете доступ к одному делу; магистрат оформляет регламент и получает влияние +1, остальные вызывают подозрения, но получают знание Совета +1.";
             }
 
             if (state.Build == PlayerBuild.rogue || state.ShadowEntryUnlocked) {
                 ApplyThreatDelta(1, "Проверка масштаба: новичок");
                 ApplyStrengthDelta(1, "Проверка масштаба: новичок");
+                state.ArchiveWingOpen = true;
+                state.GuardHostile = true;
                 return "Новобранец: проверка слишком сложная, но теневой вход помогает украсть часть сведений. Мафия +1, угроза +1.";
             }
 
+            if (state.Build == PlayerBuild.magistrate) {
+                ApplyInfluenceDelta(1, "Проверка масштаба: служебная апелляция");
+                return "Архивариус: охрана задерживает вас, но служебная апелляция фиксирует право на повторную проверку. Влияние +1.";
+            }
             ApplyInfluenceDelta(-1, "Проверка масштаба: провал архивариуса");
-            return "Архивариус: проверка высокой сложности провалена. Охрана вызывает начальника, служебное влияние -1.";
+            return "Проверка высокой сложности провалена. Охрана вызывает начальника, служебное влияние -1.";
         }
 
         private string ResolveProgressionBehaviorResult() {
@@ -1525,8 +1852,8 @@ namespace RightOfBlood.Prototype {
         }
 
         private string FormatQuestStatus(PrototypeQuestStatus status, string lockedHint) {
-            if (status == PrototypeQuestStatus.locked) return "locked (" + lockedHint + ")";
-            return status.ToString();
+            if (status == PrototypeQuestStatus.locked) return "закрыт (" + lockedHint + ")";
+            return status == PrototypeQuestStatus.active ? "активен" : "завершён";
         }
 
         private string GetScalingCheckUnlockHint() {
@@ -1557,6 +1884,8 @@ namespace RightOfBlood.Prototype {
 
         private string GetObjectiveText() {
             UpdateAdvancedQuestAvailability();
+            if (state.FinaleQuestStatus == PrototypeQuestStatus.active) return "Вернись в тайную библиотеку и реши судьбу города.";
+            if (state.MafiaFinaleQuestStatus == PrototypeQuestStatus.active) return "Вернись к тайнику Мафии в тёмных улицах и реши судьбу кварталов.";
             if (state.ScalingCheckQuestStatus == PrototypeQuestStatus.active) return "Пройди проверку со скейлингом в закрытом крыле архива.";
             if (state.ProgressionBehaviorQuestStatus == PrototypeQuestStatus.active) return "Доступен квест 4: сцена у входа в библиотеку Совета.";
             if (state.BuildApproachQuestStatus == PrototypeQuestStatus.active) return "Доступен квест 5: проблема контрабанды и эпидемии.";
@@ -1625,18 +1954,14 @@ namespace RightOfBlood.Prototype {
             activeChoices.Clear();
             activeChoices.AddRange(choices);
             dialogueOpen = true;
-
             var choiceTexts = new string[activeChoices.Count];
-            for (var i = 0; i < activeChoices.Count; i++) {
-                choiceTexts[i] = activeChoices[i].Text;
-            }
+            for (var i = 0; i < activeChoices.Count; i++) choiceTexts[i] = NormalizeText(activeChoices[i].Text);
+            if (questUi) questUi.ShowDialogue(NormalizeText(speaker), NormalizeText(text), choiceTexts, Choose);
+            else Debug.LogWarning("Интерфейс квестов не найден");
+        }
 
-            if (questUi) {
-                questUi.ShowDialogue(speaker, text, choiceTexts, Choose);
-            }
-            else {
-                Debug.LogWarning("PrototypeQuestUi null");
-            }
+        private static string NormalizeText(string value) {
+            return TextNormalizer.Normalize(value);
         }
 
         private void CloseDialogue() {
@@ -1646,7 +1971,7 @@ namespace RightOfBlood.Prototype {
         }
 
         private void Choose(int index) {
-            if (index < 0 || index >= activeChoices.Count) return;
+            if (GameConsole.IsInputBlocked || index < 0 || index >= activeChoices.Count) return;
             var action = activeChoices[index].Action;
             activeChoices.Clear();
             action?.Invoke();
@@ -1655,8 +1980,9 @@ namespace RightOfBlood.Prototype {
         private void RefreshUi() {
             RefreshProgressionFromReputation();
             UpdateAdvancedQuestAvailability();
+            SyncWorldStateFlags();
             if (questUi == null) return;
-            var prompt = player == null ? "no Player w PrototypePlayerController" : currentPrompt;
+            var prompt = player == null ? "\u0418\u0433\u0440\u043e\u043a \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d" : currentPrompt;
             questUi.RefreshHud(state, GetObjectiveText(), prompt);
         }
 
@@ -1669,9 +1995,3 @@ namespace RightOfBlood.Prototype {
         }
     }
 }
-
-
-
-
-
-

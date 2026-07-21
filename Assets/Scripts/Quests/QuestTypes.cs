@@ -62,6 +62,91 @@ namespace RightOfBlood.Prototype {
         street_authority
     }
 
+    public enum WorldControlState {
+        magistrate,
+        council,
+        mafia,
+        contested
+    }
+
+    public enum WorldMoodState {
+        stable,
+        tense,
+        locked_down,
+        crisis
+    }
+
+    public enum WorldRouteState {
+        closed,
+        open,
+        secret
+    }
+
+    public enum WorldObjectState {
+        hidden,
+        locked,
+        available,
+        unlocked,
+        blocked,
+        used,
+        altered,
+        destroyed,
+        controlled_by_council,
+        controlled_by_mafia
+    }
+    public enum ReputationTier {
+        low,
+        neutral,
+        high,
+        dominant
+    }
+
+    public enum StreetMode {
+        free,
+        patrolled,
+        raid
+    }
+
+    [Serializable]
+    public sealed class FactionState {
+        public int Reputation;
+        public int Trust;
+        public int Suspicion;
+        public bool HasAccess;
+
+        public ReputationTier Tier {
+            get {
+                if (Reputation >= 6) return ReputationTier.dominant;
+                if (Reputation >= 3) return ReputationTier.high;
+                if (Reputation <= -2) return ReputationTier.low;
+                return ReputationTier.neutral;
+            }
+        }
+    }
+
+    [Serializable]
+    public sealed class WorldState {
+        public int Threat;
+        public int Stability = 100;
+        public WorldControlState CityControl = WorldControlState.contested;
+        public StreetMode Streets = StreetMode.free;
+        public bool Quarantine;
+        public bool Siege;
+    }
+
+    [Serializable]
+    public sealed class LocationState {
+        public bool IsOpen = true;
+        public WorldControlState Control = WorldControlState.contested;
+        public string[] ActiveObjects = Array.Empty<string>();
+        public int RiskLevel;
+    }
+
+    [Serializable]
+    public sealed class InteractableState {
+        public WorldObjectState State = WorldObjectState.available;
+        public int Progress;
+    }
     public enum SkillId {
         service_seal,
         archive_procedure,
@@ -80,6 +165,31 @@ namespace RightOfBlood.Prototype {
         active,
         completed
     }
+
+    public enum FinaleChoice {
+        none,
+        summon,
+        seal,
+        council,
+        mafia,
+        mafia_rule,
+        mafia_truce,
+        mafia_escape,
+        reveal
+    }
+    public enum GameOutcome {
+        none,
+        summoned_creature,
+        sealed_archive,
+        council_custody,
+        mafia_custody,
+        public_truth,
+        mafia_rule,
+        mafia_truce,
+        archive_escape,
+        death
+    }
+
     public enum PrototypeInteractionKind {
         missing_document_desk = 0,
         chief = 1,
@@ -92,7 +202,18 @@ namespace RightOfBlood.Prototype {
         black_archive_door = 8,
         door = 9,
         council_public_library = 10,
-        council_secret_library = 11
+        council_secret_library = 11,
+        seal = 12,
+        notice_board = 13,
+        card_index = 14,
+        cache = 15,
+        contraband_container = 16,
+        sealed_passage = 17,
+        reinforced_door = 18,
+        street_patrol = 19,
+        guard_post = 20,
+        blackmail_point = 21,
+        street_raid = 22
     }
 
     [Serializable]
@@ -146,10 +267,44 @@ namespace RightOfBlood.Prototype {
         public PrototypeQuestStatus ScalingCheckQuestStatus = PrototypeQuestStatus.locked;
         public PrototypeQuestStatus ProgressionBehaviorQuestStatus = PrototypeQuestStatus.locked;
         public PrototypeQuestStatus BuildApproachQuestStatus = PrototypeQuestStatus.locked;
+        public PrototypeQuestStatus FinaleQuestStatus = PrototypeQuestStatus.locked;
+        public PrototypeQuestStatus MafiaFinaleQuestStatus = PrototypeQuestStatus.locked;
+        public FinaleChoice FinaleChoice = FinaleChoice.none;
+        public GameOutcome Outcome = GameOutcome.none;
+        public bool GameEnded;
+        public string EndingSummary;
+        public bool QuarantineRouteOpen;
+        public bool AntidoteDistributed;
+        public bool BlackWarehouseDestroyed;
+        public bool ArchiveWingOpen;
+        public bool GuardHostile;
         public string ScalingCheckOutcome;
         public string ProgressionBehaviorOutcome;
         public string BuildApproachOutcome;
         public float LastArchiveDocumentTheftTime = -999f;
+        public WorldMoodState CityMood = WorldMoodState.stable;
+        public WorldControlState OfficeControl = WorldControlState.magistrate;
+        public WorldControlState CityControl = WorldControlState.contested;
+        public WorldControlState ArchiveControl = WorldControlState.magistrate;
+        public WorldControlState CouncilControl = WorldControlState.council;
+        public WorldControlState StreetsControl = WorldControlState.mafia;
+        public WorldRouteState ArchiveFrontDoorState = WorldRouteState.open;
+        public WorldRouteState ArchiveBackDoorState = WorldRouteState.secret;
+        public WorldRouteState CouncilSecretLibraryState = WorldRouteState.closed;
+        public WorldRouteState DarkStreetsRouteState = WorldRouteState.closed;
+        public WorldObjectState ChiefState = WorldObjectState.available;
+        public WorldObjectState CouncilScholarState = WorldObjectState.hidden;
+        public WorldObjectState MafiaFixerState = WorldObjectState.hidden;
+        public WorldObjectState FormerArchivistState = WorldObjectState.hidden;
+        public FactionState Council = new FactionState();
+        public FactionState Mafia = new FactionState();
+        public FactionState Magistrate = new FactionState();
+        public WorldState World = new WorldState();
+        public LocationState Office = new LocationState();
+        public LocationState City = new LocationState();
+        public LocationState Archive = new LocationState();
+        public LocationState CouncilLocation = new LocationState();
+        public LocationState Streets = new LocationState();
     }
 
     public sealed class DialogueChoice {

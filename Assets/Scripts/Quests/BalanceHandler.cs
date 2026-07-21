@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Text;
 using UnityEngine;
 
@@ -118,10 +118,10 @@ namespace RightOfBlood.Prototype {
             }
 
             builder.AppendLine($"Коэффициент: S{coefficient}");
-            builder.AppendLine($"Влияние: {FormatDelta(influenceBase)} × S = {FormatDelta(influence)}");
-            builder.AppendLine($"Знания: {FormatDelta(knowledgeBase)} × S = {FormatDelta(knowledge)}");
-            builder.AppendLine($"Сила: {FormatDelta(strengthBase)} × S = {FormatDelta(strength)}");
-            builder.AppendLine($"{reputationLabel}: {FormatDelta(reputationBase)} × S = {FormatDelta(reputation)}");
+            builder.AppendLine($"Влияние: {FormatDelta(influenceBase)} * S = {FormatDelta(influence)}");
+            builder.AppendLine($"Знания: {FormatDelta(knowledgeBase)} * S = {FormatDelta(knowledge)}");
+            builder.AppendLine($"Сила: {FormatDelta(strengthBase)} * S = {FormatDelta(strength)}");
+            builder.AppendLine($"{reputationLabel}: {FormatDelta(reputationBase)} * S = {FormatDelta(reputation)}");
             return builder.ToString().TrimEnd();
         }
 
@@ -132,7 +132,6 @@ namespace RightOfBlood.Prototype {
             builder.AppendLine($"Влияние: {state.OfficialInfluence}");
             builder.AppendLine($"Знания: {state.CouncilReputation}");
             builder.AppendLine($"Сила: {state.MafiaReputation}");
-            // builder.AppendLine($"Состояние города: {GetCityStateLabel()}");
             builder.AppendLine($"Базовая угроза этапа: {lastBaseThreat}");
             builder.AppendLine($"Итоговая угроза: {state.ThreatLevel}");
             builder.AppendLine($"Последний расчёт: {lastCalculation}");
