@@ -1,5 +1,5 @@
+using System;
 using System.Collections.Generic;
-using RightOfBlood.Prototype;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -20,6 +20,9 @@ namespace RightOfBlood.Prototype {
         private readonly List<string> history = new List<string>();
         private string command = string.Empty;
         private bool isOpen;
+        private float nextBackspaceRepeatTime;
+        private const float BackspaceRepeatDelay = 0.35f;
+        private const float BackspaceRepeatInterval = 0.055f;
 
         private void Awake() {
             CreateUi();
@@ -47,12 +50,83 @@ namespace RightOfBlood.Prototype {
             if (!isOpen) return;
             if (keyboard.escapeKey.wasPressedThisFrame) { SetOpen(false); return; }
             if (keyboard.enterKey.wasPressedThisFrame || keyboard.numpadEnterKey.wasPressedThisFrame) { Execute(); return; }
-            if (keyboard.backspaceKey.wasPressedThisFrame && command.Length > 0) {
-                command = command.Substring(0, command.Length - 1);
-                RefreshLine();
+            if (keyboard.tabKey.wasPressedThisFrame) { TryAutoComplete(); return; }
+            HandleBackspace(keyboard);
+        }
+
+        private void HandleBackspace(Keyboard keyboard) {
+            if (keyboard.backspaceKey.wasPressedThisFrame) {
+                RemoveLastCharacter();
+                nextBackspaceRepeatTime = Time.unscaledTime + BackspaceRepeatDelay;
+                return;
+            }
+
+            if (!keyboard.backspaceKey.isPressed) {
+                nextBackspaceRepeatTime = 0f;
+                return;
+            }
+
+            if (command.Length > 0 && Time.unscaledTime >= nextBackspaceRepeatTime) {
+                RemoveLastCharacter();
+                nextBackspaceRepeatTime = Time.unscaledTime + BackspaceRepeatInterval;
             }
         }
 
+        private void RemoveLastCharacter() {
+            if (command.Length == 0) return;
+            command = command.Substring(0, command.Length - 1);
+            RefreshLine();
+        }
+
+        private void TryAutoComplete() {
+            var entered = command.Trim();
+            if (entered.IndexOf(' ') < 0) {
+                if (string.Equals(entered, "quests", StringComparison.OrdinalIgnoreCase)) {
+                    ApplyCompletion("quests 1_document");
+                    return;
+                }
+                if (string.Equals(entered, "skills", StringComparison.OrdinalIgnoreCase)) {
+                    ApplyCompletion("skills magistrate_1");
+                    return;
+                }
+                if (string.Equals(entered, "help", StringComparison.OrdinalIgnoreCase)) {
+                    ApplyCompletion("help");
+                    return;
+                }
+
+                CycleMatchingCompletion(entered, new[] { "quests", "skills", "help" });
+                return;
+            }
+
+            var commandOptions = entered.StartsWith("quests", StringComparison.OrdinalIgnoreCase)
+                ? new[] { "quests 1_document", "quests 2_council", "quests 3_scaling", "quests 4_progression", "quests 5_epidemic", "quests 6_final" }
+                : entered.StartsWith("skills", StringComparison.OrdinalIgnoreCase)
+                    ? new[] { "skills magistrate_1", "skills magistrate_2", "skills magistrate_3", "skills council_1", "skills council_2", "skills council_3", "skills mafia_1", "skills mafia_2", "skills mafia_3" }
+                    : System.Array.Empty<string>();
+            CycleMatchingCompletion(entered, commandOptions);
+        }
+
+        private void CycleMatchingCompletion(string entered, string[] options) {
+            if (options == null || options.Length == 0) return;
+
+            for (var i = 0; i < options.Length; i++) {
+                if (string.Equals(options[i], entered, StringComparison.OrdinalIgnoreCase)) {
+                    ApplyCompletion(options[(i + 1) % options.Length]);
+                    return;
+                }
+            }
+
+            for (var i = 0; i < options.Length; i++) {
+                if (options[i].StartsWith(entered, StringComparison.OrdinalIgnoreCase)) {
+                    ApplyCompletion(options[i]);
+                    return;
+                }
+            }
+        }
+        private void ApplyCompletion(string value) {
+            command = value;
+            RefreshLine();
+        }
         private void OnTextInput(char character) {
             if (!isOpen) {
                 if (character == '/') SetOpen(true);
@@ -123,7 +197,7 @@ namespace RightOfBlood.Prototype {
             command = string.Empty;
             RefreshLine();
             if (string.IsNullOrEmpty(submitted)) return;
-            Print("> " + submitted);
+            Print("> /" + submitted);
 
             var normalized = submitted.TrimStart('/').Trim();
             var separator = normalized.IndexOf(' ');
@@ -162,7 +236,7 @@ namespace RightOfBlood.Prototype {
         }
 
         private void RefreshLine() {
-            if (line != null) line.text = "> " + command + "_";
+            if (line != null) line.text = "> /" + command + "_";
         }
 
         private void Print(string value) {
