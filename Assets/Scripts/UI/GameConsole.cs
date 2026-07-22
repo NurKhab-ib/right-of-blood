@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -7,7 +7,8 @@ using UnityEngine.UI;
 
 namespace RightOfBlood.Prototype {
     public sealed class GameConsole : MonoBehaviour {
-        public static bool IsInputBlocked { get; private set; }
+        private static GameConsole activeConsole;
+        public static bool IsInputBlocked => activeConsole != null && activeConsole.isOpen;
         [SerializeField] private QuestGame game;
         [SerializeField] private KeyCode toggleKey = KeyCode.Slash;
 
@@ -25,6 +26,7 @@ namespace RightOfBlood.Prototype {
         private const float BackspaceRepeatInterval = 0.055f;
 
         private void Awake() {
+            activeConsole = this;
             CreateUi();
             SetOpen(false);
         }
@@ -36,7 +38,8 @@ namespace RightOfBlood.Prototype {
         private void OnDisable() {
             if (subscribedKeyboard != null) subscribedKeyboard.onTextInput -= OnTextInput;
             subscribedKeyboard = null;
-            IsInputBlocked = false;
+            isOpen = false;
+            if (activeConsole == this) activeConsole = null;
         }
 
         private void Update() {
@@ -94,7 +97,11 @@ namespace RightOfBlood.Prototype {
                     return;
                 }
 
-                CycleMatchingCompletion(entered, new[] { "quests", "skills", "help" });
+                if (string.Equals(entered, "restart", StringComparison.OrdinalIgnoreCase)) {
+                    ApplyCompletion("restart");
+                    return;
+                }
+                CycleMatchingCompletion(entered, new[] { "quests", "skills", "restart", "help" });
                 return;
             }
 
@@ -187,6 +194,7 @@ namespace RightOfBlood.Prototype {
             text.font = TMP_Settings.defaultFontAsset;
             text.fontSize = fontSize;
             text.enableWordWrapping = true;
+            text.raycastTarget = false;
             text.alignment = alignment;
             text.color = new Color(0.78f, 0.92f, 1f);
             return text;
@@ -204,13 +212,19 @@ namespace RightOfBlood.Prototype {
             var verb = (separator < 0 ? normalized : normalized.Substring(0, separator)).ToLowerInvariant();
             var argument = separator < 0 ? string.Empty : normalized.Substring(separator + 1).Trim();
             if (verb == "help") {
-                Print("Квесты: 1_document, 2_council, 3_scaling, 4_progression, 5_epidemic, 6_final. Этапы: magistrate_1..3, council_1..3, mafia_1..3.");
+                Print("Квесты: 1_document, 2_council, 3_scaling, 4_progression, 5_epidemic, 6_final. Этапы: magistrate_1..3, council_1..3, mafia_1..3. /restart - начать с нуля.");
                 return;
             }
 
             game ??= FindFirstObjectByType<QuestGame>();
             if (game == null) {
                 Print("\u0418\u0433\u0440\u0430 \u0435\u0449\u0451 \u043d\u0435 \u0438\u043d\u0438\u0446\u0438\u0430\u043b\u0438\u0437\u0438\u0440\u043e\u0432\u0430\u043d\u0430.");
+                return;
+            }
+
+            if (verb == "restart") {
+                Print("Прогресс сброшен. Новая история начинается.");
+                game.RestartStory();
                 return;
             }
 
@@ -227,7 +241,6 @@ namespace RightOfBlood.Prototype {
 
         private void SetOpen(bool value) {
             isOpen = value;
-            IsInputBlocked = value;
             if (value) FindFirstObjectByType<ProgressionUIHandler>()?.CloseAllPanels();
             if (panel != null) panel.SetActive(value);
             if (closedHint != null) closedHint.gameObject.SetActive(!value);

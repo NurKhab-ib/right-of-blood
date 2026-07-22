@@ -10,6 +10,7 @@ namespace RightOfBlood.Prototype {
         public Bounds MovementBounds;
 
         private Rigidbody2D body;
+        private Vector2 requestedVelocity;
 
         private void Awake() {
             body = GetComponent<Rigidbody2D>();
@@ -24,7 +25,7 @@ namespace RightOfBlood.Prototype {
 
         private void Update() {
             if (!CanMove || GameConsole.IsInputBlocked || Keyboard.current == null) {
-                if (body != null) body.linearVelocity = Vector2.zero;
+                requestedVelocity = Vector2.zero;
                 return;
             }
 
@@ -37,13 +38,28 @@ namespace RightOfBlood.Prototype {
             if (movement.sqrMagnitude > 1f) movement.Normalize();
 
             var sprintMultiplier = keyboard.leftShiftKey.isPressed || keyboard.rightShiftKey.isPressed ? SprintMultiplier : 1f;
-            body.linearVelocity = movement * (Speed * sprintMultiplier);
+            requestedVelocity = movement * (Speed * sprintMultiplier);
+        }
+
+        private void FixedUpdate() {
+            if (body == null) return;
+            body.linearVelocity = CanMove && !GameConsole.IsInputBlocked ? requestedVelocity : Vector2.zero;
+
             if (UseBounds && MovementBounds.size.sqrMagnitude > 0.01f) {
                 var position = body.position;
                 position.x = Mathf.Clamp(position.x, MovementBounds.min.x + 0.3f, MovementBounds.max.x - 0.3f);
                 position.y = Mathf.Clamp(position.y, MovementBounds.min.y + 0.4f, MovementBounds.max.y - 0.4f);
                 body.position = position;
             }
+        }
+
+        public void StopImmediately() {
+            requestedVelocity = Vector2.zero;
+            if (body != null) body.linearVelocity = Vector2.zero;
+        }
+
+        private void OnDisable() {
+            StopImmediately();
         }
     }
 }

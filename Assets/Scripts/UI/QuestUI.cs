@@ -69,11 +69,33 @@ namespace RightOfBlood.Prototype {
         }
 
         private static string BuildHudText(IntroQuestState state) {
-            return $"Этап {state.Level}   Билд: {BuildStatus(state)}   Реп {CurrentBranchReputation(state)}/{NextReputation(state)}   " +
-                   $"Совет {state.CouncilReputation:+#;-#;0}   Мафия {state.MafiaReputation:+#;-#;0}   " +
-                   $"Служба {state.OfficialInfluence}   Угроза {state.ThreatLevel}   " +
-                   $"Документ {DocumentStatus(state)}   Квест Совета: {CouncilQuestStatus(state)}   Навыки: {SkillStatus(state)}   " +
-                   $"Мир: {WorldSummary(state)}";
+            return $"Звание: {BuildStatus(state)}   Совет: {RelationshipText(state.CouncilReputation)}   " +
+                   $"Мафия: {RelationshipText(state.MafiaReputation)}   Служебный статус: {OfficialStatus(state.OfficialInfluence)}   " +
+                   $"Городская тревога: {ThreatText(state.ThreatLevel)}   Документ: {DocumentStatus(state)}   " +
+                   $"Дело Совета: {CouncilQuestStatus(state)}   Навыки: {SkillStatus(state)}";
+        }
+
+        private static string RelationshipText(int value) {
+            if (value >= 4) return "верны";
+            if (value >= 2) return "благосклонны";
+            if (value > 0) return "присматриваются";
+            if (value == 0) return "нейтральны";
+            if (value <= -3) return "враждебны";
+            return "насторожены";
+        }
+
+        private static string ThreatText(int value) {
+            if (value >= 7) return "критическая";
+            if (value >= 4) return "высокая";
+            if (value > 0) return "ощутимая";
+            return "низкая";
+        }
+
+        private static string OfficialStatus(int value) {
+            if (value >= 4) return "весомый";
+            if (value >= 2) return "признанный";
+            if (value > 0) return "ограниченный";
+            return "без полномочий";
         }
 
         private static string BuildCityStateText(IntroQuestState state) {
@@ -145,7 +167,7 @@ namespace RightOfBlood.Prototype {
                    $"городской контроль {ControlText(state.CityControl)} | архив {ControlText(state.ArchiveControl)} | " +
                    $"Совет {ControlText(state.CouncilControl)} | улицы {ControlText(state.StreetsControl)} | " +
                    $"вход в архив {RouteText(state.ArchiveFrontDoorState)} | чёрный ход {RouteText(state.ArchiveBackDoorState)} | " +
-                   $"тайная библиотека {RouteText(state.CouncilSecretLibraryState)} | тёмные улицы {RouteText(state.DarkStreetsRouteState)}";
+                   $"Тайная библиотека Совета {RouteText(state.CouncilSecretLibraryState)} | тёмные улицы {RouteText(state.DarkStreetsRouteState)}";
         }
 
         private static string WorldMoodText(WorldMoodState state) {
@@ -192,10 +214,13 @@ namespace RightOfBlood.Prototype {
 
         private static string BuildStatus(IntroQuestState state) {
             switch (state.Build) {
-                case PlayerBuild.magistrate: return "Магистрат";
-                case PlayerBuild.sage: return "Совет";
-                case PlayerBuild.rogue: return "Мафия";
-                default: return "не выбран";
+                case PlayerBuild.magistrate:
+                    return state.Level >= 3 ? "Управляющий городом" : state.Level == 2 ? "Управляющий архивом" : "Архивариус";
+                case PlayerBuild.sage:
+                    return state.Level >= 3 ? "Член Совета" : state.Level == 2 ? "Кандидат в Совет" : "Прихожанин Совета";
+                case PlayerBuild.rogue:
+                    return state.Level >= 3 ? "Глава гильдии" : state.Level == 2 ? "Бывалый разбойник" : "Новобранец";
+                default: return "путь не выбран";
             }
         }
 
@@ -208,7 +233,7 @@ namespace RightOfBlood.Prototype {
             if (state.ShadowEntryUnlocked) skills.Add("Тень");
             if (state.StreetDebtUnlocked) skills.Add("Долг");
             if (state.AncientBloodMandateUnlocked) skills.Add("Право крови");
-            if (state.PublicLibraryAccessUnlocked) skills.Add("Библиотека");
+            if (state.PublicLibraryAccessUnlocked) skills.Add("Публичная библиотека Совета");
             if (state.ArchiveDocumentTheftUnlocked) skills.Add("Кража дела");
             return skills.Count == 0 ? "нет" : string.Join(", ", skills);
         }

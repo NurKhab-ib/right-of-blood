@@ -21,6 +21,7 @@ namespace RightOfBlood.Prototype {
             switch (kind) {
                 case PrototypeInteractionKind.chief:
                 case PrototypeInteractionKind.archive_security:
+                case PrototypeInteractionKind.event_messenger:
                 case PrototypeInteractionKind.council_scholar:
                 case PrototypeInteractionKind.mafia_fixer:
                 case PrototypeInteractionKind.former_archivist:

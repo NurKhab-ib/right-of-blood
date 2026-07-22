@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace RightOfBlood.Prototype {
     public enum LocationId {
@@ -156,9 +157,25 @@ namespace RightOfBlood.Prototype {
         street_debt,
         ancient_blood_mandate,
         public_library_access,
-        archive_document_theft
+        archive_document_theft,
+        city_decree,
+        council_conclave,
+        guild_command
     }
 
+    public enum ReactiveEventKind {
+        none,
+        magistrate_petition,
+        magistrate_audit,
+        magistrate_riot,
+        council_specimen,
+        council_manuscript,
+        council_leak,
+        mafia_debt,
+        mafia_protection,
+        mafia_succession
+
+    }
 
     public enum PrototypeQuestStatus {
         locked,
@@ -205,15 +222,13 @@ namespace RightOfBlood.Prototype {
         council_secret_library = 11,
         seal = 12,
         notice_board = 13,
-        card_index = 14,
         cache = 15,
         contraband_container = 16,
-        sealed_passage = 17,
-        reinforced_door = 18,
         street_patrol = 19,
         guard_post = 20,
         blackmail_point = 21,
-        street_raid = 22
+        street_raid = 22,
+        event_messenger = 23
     }
 
     [Serializable]
@@ -234,6 +249,11 @@ namespace RightOfBlood.Prototype {
         public bool CouncilHasCopy;
         public bool MafiaHasCopy;
         public bool PlayerOnlyAccess;
+        public bool IndependentDocumentHeld;
+        public bool CouncilFragmentShared;
+        public bool MafiaRouteShared;
+        public bool ConditionalCouncilAlly;
+        public bool ConditionalMafiaAlly;
         public bool BloodKnowledgeUnlocked;
         public bool ArchiveSecurityAlerted;
         public bool BlackArchiveEntranceKnown;
@@ -257,6 +277,9 @@ namespace RightOfBlood.Prototype {
         public bool ShadowEntryUnlocked;
         public bool StreetDebtUnlocked;
         public bool AncientBloodMandateUnlocked;
+        public bool CityDecreeUnlocked;
+        public bool CouncilConclaveUnlocked;
+        public bool GuildCommandUnlocked;
         public bool PublicLibraryAccessUnlocked;
         public bool ArchiveDocumentTheftUnlocked;
         public bool ProgressionIntroSeen;
@@ -303,6 +326,9 @@ namespace RightOfBlood.Prototype {
         public LocationState Office = new LocationState();
         public LocationState City = new LocationState();
         public LocationState Archive = new LocationState();
+        public List<ReactiveEventKind> ResolvedReactiveEvents = new List<ReactiveEventKind>();
+        public ReactiveEventKind ActiveReactiveEvent = ReactiveEventKind.none;
+        public float NextReactiveEventTime = 20f;
         public LocationState CouncilLocation = new LocationState();
         public LocationState Streets = new LocationState();
     }

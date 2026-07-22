@@ -10,9 +10,11 @@ namespace RightOfBlood.Prototype {
             state.GameEnded = true;
             state.EndingSummary = summary;
             SyncWorldStateFlags();
+            CloseDialogue();
             RefreshUi();
-            ShowDialogue(title, summary + "\n\nИстория завершена. Выберите новую историю, чтобы пройти другим путём.",
-                new[] { new DialogueChoice("Начать новую историю", RestartStory) });
+            var endingScreen = FindFirstObjectByType<EndingScreen>();
+            if (endingScreen == null) endingScreen = new GameObject("Экран финала").AddComponent<EndingScreen>();
+            endingScreen.Show(outcome, title, summary, RestartStory);
         }
 
         private void CompleteDeath(string reason) {
@@ -21,7 +23,7 @@ namespace RightOfBlood.Prototype {
                 reason + " Город остаётся без носителя древней крови: Совет прячет знания, Мафия делит улицы, а ритуал так и не получает решения.");
         }
 
-        private void RestartStory() {
+        public void RestartStory() {
             SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
         }
 

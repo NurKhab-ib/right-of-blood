@@ -1,4 +1,4 @@
-﻿namespace RightOfBlood.Prototype {
+namespace RightOfBlood.Prototype {
     public partial class QuestGame {
         private bool CanReachThirdStage() {
             return state.SecondDevelopmentChoiceMade &&
@@ -26,8 +26,8 @@
 
         private void OfferSecondDevelopmentChoice() {
             if (state.SecondDevelopmentChoiceMade || GetCurrentBranchReputation() < ProgressionModel.ReputationForSecondLevel) return;
-            ShowDialogue("Второе решение развития",
-                "Первый серьёзный успех сделал вас заметным. Выберите, как закрепить путь: это открывает второй этап, но делает прежние компромиссы видимыми для соперников.",
+            ShowDialogue("Выбор пути",
+                "Первое серьёзное дело сделало вас заметным. Решите, как закрепить свой путь: прежние компромиссы станут известны соперникам.",
                 new[] { new DialogueChoice("Закрепить текущий путь", ConfirmSecondDevelopmentChoice),
                         new DialogueChoice("Пока не решать", CloseDialogue) });
         }
@@ -37,7 +37,7 @@
             state.SecondDevelopmentChoice = state.Build == PlayerBuild.magistrate ? ProgressionChoice.public_office :
                 state.Build == PlayerBuild.sage ? ProgressionChoice.forbidden_knowledge : ProgressionChoice.street_authority;
             RefreshProgressionFromReputation();
-            ShowMessage("Путь закреплён", "Открыт второй этап. Для вершины пути нужны репутация 4, проверка закрытого крыла и последствия вашего решения по эпидемии.");
+            ShowMessage("Путь закреплён", "Город признал ваше назначение. Чтобы получить высшее звание, завершите дело закрытого крыла Архива и решите судьбу заражённого товара.");
         }
 
         private string GetMandateRequirementText() {

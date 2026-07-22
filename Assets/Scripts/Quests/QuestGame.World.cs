@@ -42,7 +42,7 @@ namespace RightOfBlood.Prototype {
             SyncLocationState(state.Office, true, state.OfficeControl, 0, "\u041a\u0430\u043d\u0446\u0435\u043b\u044f\u0440\u0438\u044f", "\u0414\u0435\u043b\u0430");
             SyncLocationState(state.City, true, state.CityControl, state.ThreatLevel, "\u0413\u043e\u0440\u043e\u0434", "\u041a\u0430\u043d\u0446\u0435\u043b\u044f\u0440\u0438\u044f", "\u0413\u043e\u0440\u043e\u0434\u0441\u043a\u043e\u0439 \u043f\u0430\u0442\u0440\u0443\u043b\u044c");
             SyncLocationState(state.Archive, state.ArchiveFrontDoorState != WorldRouteState.closed, state.ArchiveControl, state.ThreatLevel, "\u0410\u0440\u0445\u0438\u0432", "\u041e\u0445\u0440\u0430\u043d\u0430", "\u0410\u0440\u0445\u0438\u0432\u043d\u044b\u0435 \u043f\u043e\u043b\u043a\u0438");
-            SyncLocationState(state.CouncilLocation, CanEnterCouncilLocation(), state.CouncilControl, state.ThreatLevel, "\u0410\u0440\u0445\u0438\u0432", "\u0421\u043e\u0432\u0435\u0442");
+            SyncLocationState(state.CouncilLocation, CanEnterCouncilLocation(), state.CouncilControl, state.ThreatLevel, "\u0421\u043e\u0432\u0435\u0442", "\u041f\u0443\u0431\u043b\u0438\u0447\u043d\u0430\u044f \u0431\u0438\u0431\u043b\u0438\u043e\u0442\u0435\u043a\u0430 \u0421\u043e\u0432\u0435\u0442\u0430", "\u0422\u0430\u0439\u043d\u0430\u044f \u0431\u0438\u0431\u043b\u0438\u043e\u0442\u0435\u043a\u0430 \u0421\u043e\u0432\u0435\u0442\u0430");
             SyncLocationState(state.Streets, CanEnterDarkStreets(), state.StreetsControl, state.ThreatLevel, "\u041a\u0430\u043d\u0446\u0435\u043b\u044f\u0440\u0438\u044f", "\u041f\u043e\u0441\u0440\u0435\u0434\u043d\u0438\u043a\u0438", "\u0413\u043e\u0440\u043e\u0434\u0441\u043a\u043e\u0439 \u043f\u0430\u0442\u0440\u0443\u043b\u044c");        }
 
         private static void SyncFactionState(FactionState faction, int reputation, bool hasAccess, bool suspicious) {
@@ -131,13 +131,10 @@ namespace RightOfBlood.Prototype {
         }
 
         private WorldRouteState ResolveArchiveBackDoorState() {
-            if (state.BlackArchiveEntranceKnown || state.Access == AccessMethod.mafia || state.Access == AccessMethod.council || state.CriminalWorldAccess) {
+            if (state.BlackArchiveEntranceKnown || state.MafiaRouteShared) {
                 return WorldRouteState.secret;
             }
 
-            if (state.ScalingCheckQuestStatus == PrototypeQuestStatus.active || state.ScalingCheckQuestStatus == PrototypeQuestStatus.completed) {
-                return WorldRouteState.open;
-            }
 
             return WorldRouteState.closed;
         }
@@ -194,6 +191,12 @@ namespace RightOfBlood.Prototype {
                     return;                case PrototypeInteractionKind.black_archive_door:
                     interactable.SetVisible(state.ArchiveBackDoorState != WorldRouteState.closed);
                     interactable.SetLabel(state.ArchiveBackDoorState == WorldRouteState.secret ? "\u0427\u0451\u0440\u043d\u044b\u0439 \u0445\u043e\u0434 \u0432 \u0430\u0440\u0445\u0438\u0432" : "\u0417\u0430\u043f\u0435\u0440\u0442\u0430\u044f \u0434\u0432\u0435\u0440\u044c");
+                    return;
+                case PrototypeInteractionKind.cache:
+                    interactable.SetVisible(currentLocation == LocationId.streets && CanUseMafiaWorldPoints());
+                    return;
+                case PrototypeInteractionKind.contraband_container:
+                    interactable.SetVisible(currentLocation == LocationId.streets && CanUseMafiaWorldPoints());
                     return;
                 case PrototypeInteractionKind.council_public_library:
                     interactable.SetVisible(CanEnterCouncilLocation());
@@ -274,11 +277,8 @@ namespace RightOfBlood.Prototype {
         private WorldObjectState ResolveInteractableState(PrototypeInteractionKind kind) {
             switch (kind) {
                 case PrototypeInteractionKind.seal: return state.OfficialInfluence > 0 ? WorldObjectState.unlocked : WorldObjectState.locked;
-                case PrototypeInteractionKind.card_index: return CanEnterCouncilLocation() ? WorldObjectState.available : WorldObjectState.locked;
-                case PrototypeInteractionKind.cache: return CanEnterDarkStreets() ? WorldObjectState.available : WorldObjectState.locked;
-                case PrototypeInteractionKind.contraband_container: return state.EpidemicLeadLearned ? WorldObjectState.used : WorldObjectState.available;
-                case PrototypeInteractionKind.sealed_passage:
-                case PrototypeInteractionKind.reinforced_door:
+                case PrototypeInteractionKind.cache: return CanUseMafiaWorldPoints() ? WorldObjectState.available : WorldObjectState.hidden;
+                case PrototypeInteractionKind.contraband_container: return state.EpidemicLeadLearned ? WorldObjectState.used : (CanUseMafiaWorldPoints() ? WorldObjectState.available : WorldObjectState.hidden);
                 case PrototypeInteractionKind.black_archive_door:
                     return state.ArchiveBackDoorState == WorldRouteState.closed ? WorldObjectState.locked : WorldObjectState.unlocked;
                 case PrototypeInteractionKind.guard_post:
